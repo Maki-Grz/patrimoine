@@ -1,0 +1,51 @@
+{
+  "name": "patrimoine",
+  "version": "0.1.0-alpha.1",
+  "description": "Sovereign, SAP-native personal financial wealth and management application.",
+  "keywords": [
+    "sap-cap",
+    "svelte5",
+    "personal-finance",
+    "wealth-management",
+    "sovereignty",
+    "gdpr-by-design",
+    "fiori-design"
+  ],
+  "author": "Patrimoine Contributors",
+  "license": "Apache-2.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Maki-Grz/patrimoine.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Maki-Grz/patrimoine/issues"
+  },
+  "homepage": "https://github.com/Maki-Grz/patrimoine#readme",
+  "dependencies": {
+    "@sap/cds": "^8.1.2",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "@cap-js/sqlite": "^1.7.5"
+  },
+  "scripts": {
+    "start": "cds-serve",
+    "watch": "cds watch",
+    "build:backend": "npx --package @sap/cds-dk@9 cds build --production",
+    "build": "npm run build:frontend && npm run build:backend"
+  },
+  "cds": {
+    "requires": {
+      "db": {
+        "kind": "sql",
+        "credentials": {
+          "database": "db.sqlite"
+        }
+      }
+    },
+    "folders": {
+      "app": "app/dist"
+    }
+  }
+}

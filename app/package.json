@@ -1,0 +1,23 @@
+{
+  "name": "patrimoine-ui",
+  "private": true,
+  "version": "0.1.0-alpha.1",
+  "type": "module",
+  "description": "Frontend UI component for the Patrimoine project, built with Svelte 5 and SAP UI5 Web Components.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.2.0",
+    "svelte": "^5.56.8",
+    "vite": "^8.2.0"
+  },
+  "dependencies": {
+    "@ui5/webcomponents": "^2.25.0",
+    "@ui5/webcomponents-fiori": "^2.25.0",
+    "@ui5/webcomponents-icons": "^2.25.0"
+  }
+}

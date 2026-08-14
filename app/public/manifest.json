@@ -1,0 +1,32 @@
+{
+  "_version": "1.12.0",
+  "sap.app": {
+    "id": "gestionpatrimoine",
+    "type": "application",
+    "title": "Patrimoine",
+    "description": "Application de Patrimoine financier personnel",
+    "applicationVersion": {
+      "version": "1.0.0"
+    }
+  },
+  "sap.ui": {
+    "technology": "W3C",
+    "deviceTypes": {
+      "help": false,
+      "tablet": true,
+      "phone": true,
+      "desktop": true
+    }
+  },
+  "sap.ui5": {
+    "flexibilityServices": [],
+    "dependencies": {
+      "minUI5Version": "1.60.0",
+      "libs": {}
+    },
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    }
+  }
+}

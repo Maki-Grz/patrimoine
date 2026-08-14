@@ -1,0 +1,106 @@
+_schema-version: '3.1'
+ID: patrimoine
+version: 0.1.0-alpha.1
+description: "Application native SAP de Patrimoine financier personnel"
+parameters:
+  enable-parallel-deployments: true
+
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm install
+        - npm run build
+
+modules:
+  - name: patrimoine-srv
+    type: nodejs
+    path: gen/srv
+    parameters:
+      buildpack: nodejs_buildpack
+      readiness-health-check-type: http
+      readiness-health-check-http-endpoint: /health
+    requires:
+      - name: patrimoine-db
+    provides:
+      - name: srv-api
+        properties:
+          srv-url: ${default-url}
+
+  - name: patrimoine-db-deployer
+    type: hdb
+    path: gen/db
+    parameters:
+      buildpack: nodejs_buildpack
+    requires:
+      - name: patrimoine-db
+
+  - name: patrimoine-approuter
+    type: approuter.node
+    path: approuter
+    parameters:
+      keep-existing-routes: true
+      disk-quota: 512M
+      memory: 256M
+    requires:
+      - name: srv-api
+        group: destinations
+        properties:
+          name: srv-api
+          url: ~{srv-url}
+          forwardAuthToken: false
+      - name: patrimoine-html5-runtime
+      - name: patrimoine-uaa
+
+  - name: patrimoine-html5-deployer
+    type: com.sap.application.content
+    path: .
+    requires:
+      - name: patrimoine-html5-host
+        parameters:
+          content-target: true
+    build-parameters:
+      build-result: resources
+      requires:
+        - name: patrimoine-frontend
+          artifacts:
+            - dist/**/*
+          target-path: resources
+
+  - name: patrimoine-frontend
+    type: html5
+    path: app
+    build-parameters:
+      build-result: dist
+      builder: custom
+      commands:
+        - npm install
+        - npm run build
+
+resources:
+  - name: patrimoine-db
+    type: com.sap.xs.hdi-db
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+
+  - name: patrimoine-html5-host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-host
+
+  - name: patrimoine-html5-runtime
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-plan: app-runtime
+
+  - name: patrimoine-uaa
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      config:
+        xsappname: patrimoine-${space}
+        tenant-mode: dedicated
