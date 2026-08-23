@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { i18n } from './lib/i18n.svelte.js';
 
   // UI5 Web Components Imports
   import "@ui5/webcomponents/dist/Button.js";
@@ -121,6 +122,10 @@
   // Derived state for Select All checkbox
   let allSelected = $derived(proposedTransactions.length > 0 && proposedTransactions.every(tx => tx.checked));
   
+  /**
+   * Toggles the selection status of all proposed salary split transactions.
+   * @param {any} event - The checkbox change event.
+   */
   function toggleSelectAll(event) {
     const isChecked = event.target.checked;
     proposedTransactions.forEach(tx => tx.checked = isChecked);
@@ -130,6 +135,10 @@
   // Derived state for Select All checkbox (remaining transactions table)
   let allPendingSelected = $derived(pendingTransactions.length > 0 && pendingTransactions.every(tx => tx.checked));
   
+  /**
+   * Toggles the selection status of all pending transactions.
+   * @param {any} event - The checkbox change event.
+   */
   function togglePendingSelectAll(event) {
     const isChecked = event.target.checked;
     pendingTransactions.forEach(tx => tx.checked = isChecked);
@@ -289,14 +298,18 @@
   });
 
   // Copy transfer details helper
+  /**
+   * Copies transfer details to the clipboard in a human-readable format.
+   * @param {object} tx - The transaction object.
+   */
   function copyTransferDetails(tx) {
     const targetAcc = accounts.find(a => a.ID === tx.AccountTarget_ID);
     const sourceAcc = accounts.find(a => a.ID === tx.AccountSource_ID);
     const targetIBAN = targetAcc && targetAcc.IBAN ? targetAcc.IBAN : '';
     
-    let textToCopy = `=== Détails du virement ===\n`;
-    textToCopy += `De : ${tx.AccountSourceLibelle || (sourceAcc ? sourceAcc.Libelle : 'Compte Source')}\n`;
-    textToCopy += `Vers : ${tx.AccountTargetLibelle || (targetAcc ? targetAcc.Libelle : 'Compte Cible')}\n`;
+    let textToCopy = `=== ${i18n.currentLang === 'fr' ? 'Détails' : 'Details'} du virement ===\n`;
+    textToCopy += `De : ${tx.AccountSourceLibelle || (sourceAcc ? sourceAcc.Libelle : (i18n.currentLang === 'fr' ? 'Compte Source' : 'Source Account'))}\n`;
+    textToCopy += `Vers : ${tx.AccountTargetLibelle || (targetAcc ? targetAcc.Libelle : (i18n.currentLang === 'fr' ? 'Compte Cible' : 'Target Account'))}\n`;
     if (targetIBAN) {
       textToCopy += `IBAN Cible : ${targetIBAN}\n`;
     }
@@ -373,6 +386,11 @@
   let manualPaymentAmount = $state(0);
   let updateDefaultAmount = $state(false);
 
+  /**
+   * Checks if a recurring debit has already been paid in the current month.
+   * @param {string} dateStr - The date string of the last payment.
+   * @returns {boolean} True if paid this month, false otherwise.
+   */
   function isPaidThisMonth(dateStr) {
     if (!dateStr) return false;
     const paidDate = new Date(dateStr);
@@ -380,6 +398,10 @@
     return paidDate.getMonth() === now.getMonth() && paidDate.getFullYear() === now.getFullYear();
   }
 
+  /**
+   * Opens the manual payment confirmation dialog for a recurring debit.
+   * @param {object} deb - The recurring debit object.
+   */
   function openManualPaymentDialog(deb) {
     selectedPaymentDebit = deb;
     manualPaymentAmount = deb.Montant;
@@ -390,6 +412,10 @@
     }
   }
 
+  /**
+   * Confirms and registers a manual payment for a recurring debit.
+   * @returns {Promise<void>}
+   */
   async function confirmManualPayment() {
     if (!selectedPaymentDebit) return;
     if (manualPaymentAmount <= 0) {
@@ -471,6 +497,11 @@
     }
   });
 
+  /**
+   * Returns the French month name for a given offset from the current month.
+   * @param {number} offset - The month offset.
+   * @returns {string} The month name.
+   */
   function getMonthName(offset) {
     const now = new Date();
     let month = now.getMonth() + offset;
@@ -484,6 +515,10 @@
     return label.charAt(0).toUpperCase() + label.slice(1);
   }
 
+  /**
+   * Generates grid cells for the previsional cash calendar view.
+   * @returns {object[]} The calendar grid cells.
+   */
   function getCalendarCells() {
     const now = new Date();
     let month = now.getMonth() + selectedMonthOffset;
@@ -515,6 +550,13 @@
     
     const now = new Date();
     
+    /**
+     * Projects accounts balances for a single future month.
+     * @param {number} startBalance - Initial balance.
+     * @param {number} year - The projection year.
+     * @param {number} month - The projection month index (1-12).
+     * @returns {number} The ending balance after salary and recurring debits.
+     */
     function projectMonth(startBalance, year, month) {
       const totalDays = new Date(year, month + 1, 0).getDate();
       let currentBal = startBalance;
@@ -531,7 +573,7 @@
         let debitsSum = dayDebits.reduce((sum, deb) => sum + parseFloat(deb.Montant || 0), 0);
         
         let salaryReceived = 0;
-        if (d === (salaryConfig.JourDePaie || 27)) {
+        if (salaryConfig && d === (salaryConfig.JourDePaie || 27)) {
           const sourceNodes = flowNodes.filter(n => n.Type === 'Source' && n.Account_ID === acc.ID);
           if (sourceNodes.length > 0) {
             salaryReceived = parseFloat(salaryConfig.MontantNet || 0);
@@ -586,7 +628,7 @@
 
       
       let salaryReceived = 0;
-      if (d === (salaryConfig.JourDePaie || 27)) {
+      if (salaryConfig && d === (salaryConfig.JourDePaie || 27)) {
         const sourceNodes = flowNodes.filter(n => n.Type === 'Source' && n.Account_ID === acc.ID);
         if (sourceNodes.length > 0) {
           salaryReceived = parseFloat(salaryConfig.MontantNet || 0);
@@ -640,16 +682,30 @@
 
 
   // Formatters
+  /**
+   * Formats a numeric value into a Euro currency string.
+   * @param {number|string} value - The numeric value.
+   * @returns {string} The formatted currency string.
+   */
   function formatCurrency(value) {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(value || 0);
   }
 
+  /**
+   * Formats an ISO date string into a French readable date (DD/MM/YYYY HH:MM).
+   * @param {string} dateStr - The ISO date string.
+   * @returns {string} The formatted date string.
+   */
   function formatDate(dateStr) {
     if (!dateStr) return '-';
     return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(dateStr));
   }
 
   // Safe Fallback UUID Generator
+  /**
+   * Generates a standard RFC4122 v4 UUID.
+   * @returns {string} A random UUID.
+   */
   function generateUUID() {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
       return crypto.randomUUID();
@@ -662,6 +718,10 @@
   }
 
   // Show Toast
+  /**
+   * Displays a toast notification with the specified message.
+   * @param {string} message - The message to show.
+   */
   function showToast(message) {
     toastMessage = message;
     console.log("Toast:", message);
@@ -676,6 +736,11 @@
 
 
   // Drag & drop handlers for visual flow nodes
+  /**
+   * Handles the mousedown event on a flow node to start drag operations.
+   * @param {MouseEvent} e - The mousedown event.
+   * @param {object} node - The flow node object.
+   */
   function handleMouseDown(e, node) {
     activeDragNode = node;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -685,6 +750,10 @@
     };
   }
 
+  /**
+   * Handles the mousemove event to update the dragged flow node's position.
+   * @param {MouseEvent} e - The mousemove event.
+   */
   function handleMouseMove(e) {
     if (activeDragNode) {
       const container = document.getElementById('flow-graph-container');
@@ -697,6 +766,10 @@
     }
   }
 
+  /**
+   * Handles the mouseup event to complete dragging and save node coordinates.
+   * @returns {Promise<void>}
+   */
   async function handleMouseUp() {
     if (activeDragNode) {
       const nodeToSave = activeDragNode;
@@ -714,6 +787,11 @@
   }
 
   // Client-side DAG simulator to preview split
+  /**
+   * Simulates the salary split calculation locally using flow nodes and connections.
+   * @param {number} salaryAmount - The net salary amount.
+   * @returns {object[]} The list of simulated split allocations.
+   */
   function simulateGraphSplit(salaryAmount) {
     if (!flowNodes || flowNodes.length === 0 || !flowConnections || flowConnections.length === 0 || !salaryAmount || salaryAmount <= 0) return [];
     
@@ -818,6 +896,10 @@
   }
 
   // Load All Data from OData v4 backend
+  /**
+   * Loads all financial data, configurations, rules, and logs from the CAP OData backend.
+   * @returns {Promise<void>}
+   */
   async function loadData() {
     loading = true;
     try {
@@ -920,6 +1002,11 @@
 
   // Color Palette for charts
   const COLORS = ['#0a6ed1', '#107e3e', '#e9730c', '#6f42c1', '#17a2b8', '#007bff', '#28a745', '#ffc107', '#dc3545'];
+  /**
+   * Returns a color from the dashboard chart color palette.
+   * @param {number} index - The palette index.
+   * @returns {string} The hex color code.
+   */
   function getColor(index) {
     return COLORS[index % COLORS.length];
   }
@@ -993,6 +1080,9 @@
   });
 
   // ACCOUNTS CRUD
+  /**
+   * Opens the dialog to add a new bank account.
+   */
   function openAddAccount() {
     accountForm = { ID: '', Libelle: '', Type: 'Courant', SoldeActuel: 0, TypePlacement: 'Courant', DateMaturite: '', TauxActuel: 0, IBAN: '' };
     isEditingAccount = false;
@@ -1002,6 +1092,10 @@
     }
   }
 
+  /**
+   * Opens the dialog to edit an existing bank account.
+   * @param {object} acc - The account object.
+   */
   function openEditAccount(acc) {
     accountForm = { 
       ID: acc.ID,
@@ -1020,6 +1114,10 @@
     }
   }
 
+  /**
+   * Saves the account currently in the form (creates or updates).
+   * @returns {Promise<void>}
+   */
   async function saveAccount() {
     if (!accountForm.Libelle) {
       showToast("Le libellé est requis.");
@@ -1083,6 +1181,11 @@
 
 
 
+  /**
+   * Deletes a bank account by ID.
+   * @param {string} id - The UUID of the account to delete.
+   * @returns {Promise<void>}
+   */
   async function deleteAccount(id) {
     if (!confirm("Voulez-vous vraiment supprimer ce compte ? Cela supprimera également les règles et abonnements liés.")) return;
 
@@ -1102,6 +1205,9 @@
   }
 
   // ALLOCATION RULES CRUD
+  /**
+   * Opens the dialog to add a new allocation rule.
+   */
   function openAddRule() {
     if (accounts.length === 0) {
       showToast("Créez d'abord un compte.");
@@ -1115,6 +1221,10 @@
     }
   }
 
+  /**
+   * Opens the dialog to edit an existing allocation rule.
+   * @param {object} rule - The allocation rule object.
+   */
   function openEditRule(rule) {
     ruleForm = { 
       ID: rule.ID, 
@@ -1129,6 +1239,10 @@
     }
   }
 
+  /**
+   * Saves the allocation rule currently in the form (creates or updates).
+   * @returns {Promise<void>}
+   */
   async function saveRule() {
     if (!ruleForm.Account_ID) {
       showToast("Sélectionnez un compte cible.");
@@ -1191,6 +1305,11 @@
 
 
 
+  /**
+   * Deletes an allocation rule by ID.
+   * @param {string} id - The UUID of the rule to delete.
+   * @returns {Promise<void>}
+   */
   async function deleteRule(id) {
     if (!confirm("Supprimer cette règle de répartition ?")) return;
 
@@ -1210,6 +1329,9 @@
   }
 
   // FLOW NODES & CONNECTIONS CRUD
+  /**
+   * Opens the flow nodes management list dialog.
+   */
   function openManageNodes() {
     if (nodesListDialogRef) {
       nodesListDialogRef.open = true;
@@ -1217,6 +1339,9 @@
     }
   }
 
+  /**
+   * Opens the flow connections management list dialog.
+   */
   function openManageConnections() {
     if (connectionsListDialogRef) {
       connectionsListDialogRef.open = true;
@@ -1224,6 +1349,9 @@
     }
   }
 
+  /**
+   * Opens the dialog to add a new flow node.
+   */
   function openAddNode() {
     nodeForm = { Label: '', Type: 'Transit', Account_ID: '' };
     if (nodeDialogRef) {
@@ -1232,6 +1360,10 @@
     }
   }
 
+  /**
+   * Saves the flow node currently in the form.
+   * @returns {Promise<void>}
+   */
   async function saveNode() {
     try {
       const posX = 100 + Math.floor(Math.random() * 200);
@@ -1266,6 +1398,11 @@
     }
   }
 
+  /**
+   * Deletes a flow node by ID.
+   * @param {string} id - The UUID of the node to delete.
+   * @returns {Promise<void>}
+   */
   async function deleteNode(id) {
     if (!confirm("Voulez-vous supprimer ce nœud ? Ses liaisons associées seront également supprimées.")) return;
     try {
@@ -1284,6 +1421,9 @@
     }
   }
 
+  /**
+   * Opens the dialog to add a new flow connection.
+   */
   function openAddConnection() {
     connectionForm = { SourceNode_ID: '', TargetNode_ID: '', TypeRegle: 'PERCENT', Valeur: 0 };
     if (connectionDialogRef) {
@@ -1292,6 +1432,10 @@
     }
   }
 
+  /**
+   * Saves the flow connection currently in the form.
+   * @returns {Promise<void>}
+   */
   async function saveConnection() {
     if (!connectionForm.SourceNode_ID || !connectionForm.TargetNode_ID) {
       showToast("Veuillez sélectionner un nœud source et cible.");
@@ -1330,6 +1474,11 @@
     }
   }
 
+  /**
+   * Deletes a flow connection by ID.
+   * @param {string} id - The UUID of the connection to delete.
+   * @returns {Promise<void>}
+   */
   async function deleteConnection(id) {
     if (!confirm("Voulez-vous supprimer cette liaison ?")) return;
     try {
@@ -1344,6 +1493,9 @@
   }
 
   // RECURRING DEBITS CRUD
+  /**
+   * Opens the dialog to add a new recurring debit.
+   */
   function openAddDebit() {
     if (accounts.length === 0) {
       showToast("Créez d'abord un compte.");
@@ -1357,6 +1509,10 @@
     }
   }
 
+  /**
+   * Opens the dialog to edit an existing recurring debit.
+   * @param {object} deb - The recurring debit object.
+   */
   function openEditDebit(deb) {
     debitForm = { 
       ID: deb.ID, 
@@ -1374,6 +1530,10 @@
     }
   }
 
+  /**
+   * Saves the recurring debit currently in the form (creates or updates).
+   * @returns {Promise<void>}
+   */
   async function saveDebit() {
     if (!debitForm.Libelle) {
       showToast("Le libellé est requis.");
@@ -1438,6 +1598,12 @@
 
 
 
+  /**
+   * Toggles the active status of a recurring debit.
+   * @param {object} deb - The recurring debit object.
+   * @param {any} event - The switch toggle event.
+   * @returns {Promise<void>}
+   */
   async function toggleDebitStatus(deb, event) {
     const isChecked = event.target.checked;
     try {
@@ -1457,6 +1623,11 @@
     }
   }
 
+  /**
+   * Deletes a recurring debit by ID.
+   * @param {string} id - The UUID of the debit to delete.
+   * @returns {Promise<void>}
+   */
   async function deleteDebit(id) {
     if (!confirm("Supprimer cette charge récurrente ?")) return;
 
@@ -1476,6 +1647,10 @@
   }
 
   // SAVE CONFIRMED TRANSFERS TO BACKEND (INLINE EXECUTION)
+  /**
+   * Submits the confirmed proposed split transactions to the backend.
+   * @returns {Promise<void>}
+   */
   async function saveConfirmedSplit() {
     const checkedTxs = proposedTransactions.filter(tx => tx.checked);
     if (checkedTxs.length === 0) {
@@ -1566,6 +1741,10 @@
 
 
   // SAVE SELECTED PENDING TRANSACTIONS (FROM DISTRIBUTION VIEW TABLE)
+  /**
+   * Saves all checked pending transactions.
+   * @returns {Promise<void>}
+   */
   async function saveSelectedPending() {
     const checkedPending = pendingTransactions.filter(tx => tx.checked);
     if (checkedPending.length === 0) {
@@ -1633,6 +1812,11 @@
 
 
   // REAL-TIME ACTIONS FOR PENDING TRANSACTIONS (VALIDATE, DELETE, EDIT)
+  /**
+   * Validates and saves a single pending transaction.
+   * @param {object} tx - The transaction object to validate.
+   * @returns {Promise<void>}
+   */
   async function validateSinglePending(tx) {
     loading = true;
     try {
@@ -1691,6 +1875,11 @@
     }
   }
 
+  /**
+   * Deletes a single pending transaction.
+   * @param {object} tx - The transaction object to delete.
+   * @returns {Promise<void>}
+   */
   async function deleteSinglePending(tx) {
     loading = true;
     try {
@@ -1726,6 +1915,10 @@
     }
   }
 
+  /**
+   * Opens the dialog to edit a pending transaction.
+   * @param {object} tx - The transaction object.
+   */
   function openEditPending(tx) {
     pendingForm = { 
       ID: tx.ID, 
@@ -1740,6 +1933,10 @@
     }
   }
 
+  /**
+   * Saves the pending transaction currently in the edit form.
+   * @returns {Promise<void>}
+   */
   async function saveEditedPending() {
     if (!pendingForm.Libelle || pendingForm.Montant <= 0) {
       showToast("Veuillez saisir un libellé et un montant valide.");
@@ -1791,6 +1988,12 @@
     }
   }
 
+  /**
+   * Removes a proposed transaction from the simulation list.
+   * @param {object} tx - The transaction object.
+   * @param {number} index - The list index of the transaction.
+   * @returns {Promise<void>}
+   */
   async function deleteProposedTx(tx, index) {
     loading = true;
     try {
@@ -1828,6 +2031,10 @@
 
 
   // LOGS DETAIL VIEW
+  /**
+   * Opens the dialog displaying execution details for a log.
+   * @param {object} log - The execution log object.
+   */
   function showLogDetails(log) {
     selectedLogDetails = log;
     try {
@@ -1856,17 +2063,28 @@
   <!-- Header Top Bar -->
   <header class="app-header">
     <div class="header-left">
-      <button class="menu-toggle" onclick={toggleSidebar} title="Basculer le menu">
+      <button class="menu-toggle" onclick={toggleSidebar} title={i18n.t('sidebar.toggle')}>
         <ui5-icon name="menu" style="color: var(--sap-primary-color);"></ui5-icon>
       </button>
       <div class="header-logo">
         <ui5-icon name="money-bills"></ui5-icon>
-        Mon Patrimoine
-        <span class="header-logo-sub">| Finances Personnelles</span>
+        {i18n.t('header.title')}
+        <span class="header-logo-sub">| {i18n.t('header.subtitle')}</span>
       </div>
     </div>
     <div class="header-right">
-      <span class="env-badge">BTP DEV CLOUD</span>
+      <span class="env-badge">{i18n.t('header.btpDev')}</span>
+      
+      <!-- Language Selector Dropdown -->
+      <ui5-select 
+        class="lang-select" 
+        onchange={(e) => i18n.setLanguage(e.target.value)} 
+        style="width: 70px; margin-right: 15px; height: 32px;"
+      >
+        <ui5-option value="fr" selected={i18n.currentLang === 'fr'}>FR</ui5-option>
+        <ui5-option value="en" selected={i18n.currentLang === 'en'}>EN</ui5-option>
+      </ui5-select>
+
       <ui5-icon name="employee" style="color: var(--sap-text-muted-color); width: 24px; height: 24px; cursor: pointer;"></ui5-icon>
     </div>
   </header>
@@ -1877,44 +2095,44 @@
     <aside class="app-sidebar {sidebarCollapsed ? 'collapsed' : ''}">
       <ui5-side-navigation bind:this={sideNavRef}>
         <ui5-side-navigation-item 
-          text="Tableau de bord" 
+          text={i18n.t('nav.dashboard')} 
           icon="home" 
           selected={activeTab === 'dashboard'} 
           data-tab="dashboard">
         </ui5-side-navigation-item>
         <ui5-side-navigation-item 
-          text="Mes Comptes & Patrimoine" 
+          text={i18n.t('nav.accounts')} 
           icon="wallet" 
           selected={activeTab === 'comptes'} 
           data-tab="comptes">
         </ui5-side-navigation-item>
         <ui5-side-navigation-item 
-          text="Distribution du Salaire" 
+          text={i18n.t('nav.distribution')} 
           icon="process" 
           selected={activeTab === 'distribution'} 
           data-tab="distribution">
         </ui5-side-navigation-item>
         <ui5-side-navigation-item 
-          text="Graphe des Flux" 
+          text={i18n.t('nav.flowGraph')} 
           icon="org-chart" 
           selected={activeTab === 'graphe'} 
           data-tab="graphe">
         </ui5-side-navigation-item>
         <ui5-side-navigation-item 
-          text="Abonnements & Débits" 
+          text={i18n.t('nav.recurring')} 
           icon="credit-card" 
           selected={activeTab === 'abonnements'} 
           data-tab="abonnements">
         </ui5-side-navigation-item>
         <ui5-side-navigation-item 
-          text="Calendrier de Trésorerie" 
+          text={i18n.t('nav.calendar')} 
           icon="calendar" 
           selected={activeTab === 'calendar'} 
           data-tab="calendar">
         </ui5-side-navigation-item>
 
         <ui5-side-navigation-item 
-          text="Logs & Historique" 
+          text={i18n.t('nav.logs')} 
           icon="document-text" 
           selected={activeTab === 'logs'} 
           data-tab="logs">
@@ -1928,26 +2146,26 @@
       <!-- 1. DASHBOARD VIEW -->
       {#if activeTab === 'dashboard'}
         <div class="page-title-container">
-          <h1 class="page-title">Tableau de bord</h1>
-          <ui5-button icon="refresh" design="Transparent" onclick={loadData} title="Actualiser les données"></ui5-button>
+          <h1 class="page-title">{i18n.t('dash.title')}</h1>
+          <ui5-button icon="refresh" design="Transparent" onclick={loadData} title={i18n.t('dash.titleRefresh')}></ui5-button>
         </div>
 
         <!-- KPI Cards -->
         <div class="dashboard-kpis">
           <div class="kpi-card kpi-patrimoine">
-            <span class="kpi-title">Patrimoine Brut Total</span>
+            <span class="kpi-title">{i18n.t('dash.kpiWealth')}</span>
             <span class="kpi-value">{formatCurrency(totalWealth)}</span>
-            <span class="kpi-subtitle">Calculé sur {accounts.length} comptes</span>
+            <span class="kpi-subtitle">{i18n.t('dash.kpiWealthSub', { count: accounts.length })}</span>
           </div>
           <div class="kpi-card kpi-epargne">
-            <span class="kpi-title">Total Épargne & Placements</span>
+            <span class="kpi-title">{i18n.t('dash.kpiSavings')}</span>
             <span class="kpi-value">{formatCurrency(totalSavings)}</span>
-            <span class="kpi-subtitle">Exclut le(s) compte(s) courant(s)</span>
+            <span class="kpi-subtitle">{i18n.t('dash.kpiSavingsSub')}</span>
           </div>
           <div class="kpi-card kpi-charges">
-            <span class="kpi-title">Charges Fixes Mensuelles</span>
+            <span class="kpi-title">{i18n.t('dash.kpiCharges')}</span>
             <span class="kpi-value">{formatCurrency(totalCharges)}</span>
-            <span class="kpi-subtitle">Basé sur les abonnements actifs</span>
+            <span class="kpi-subtitle">{i18n.t('dash.kpiChargesSub')}</span>
           </div>
         </div>
 
@@ -1956,16 +2174,16 @@
           <!-- Left: Accounts summary -->
           <div class="sap-card">
             <div class="sap-card-header">
-              <span class="sap-card-title">Résumé de mes avoirs</span>
-              <ui5-button design="Emphasized" icon="add" onclick={() => activeTab = 'comptes'}>Gérer les comptes</ui5-button>
+              <span class="sap-card-title">{i18n.t('dash.cardTitle')}</span>
+              <ui5-button design="Emphasized" icon="add" onclick={() => activeTab = 'comptes'}>{i18n.t('dash.manageAccounts')}</ui5-button>
             </div>
             <div class="sap-card-body">
               <table class="sap-table">
                 <thead>
                   <tr>
-                    <th>Compte</th>
-                    <th>Type de placement</th>
-                    <th style="text-align: right;">Solde</th>
+                    <th>{i18n.t('dash.colAccount')}</th>
+                    <th>{i18n.t('dash.colType')}</th>
+                    <th style="text-align: right;">{i18n.t('dash.colBalance')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1985,7 +2203,7 @@
                   {#if accounts.length === 0}
                     <tr>
                       <td colspan="3" style="text-align: center; color: var(--sap-text-muted-color); padding: 20px;">
-                        Aucun compte configuré. Rendez-vous dans "Mes Comptes" pour ajouter des comptes.
+                        {i18n.currentLang === 'fr' ? 'Aucun compte configuré. Rendez-vous dans "Mes Comptes" pour ajouter des comptes.' : 'No accounts configured. Go to "Accounts & Wealth" to add accounts.'}
                       </td>
                     </tr>
                   {/if}
@@ -1997,7 +2215,7 @@
           <!-- Right: Visual distribution -->
           <div class="sap-card">
             <div class="sap-card-header">
-              <span class="sap-card-title">Répartition du patrimoine</span>
+              <span class="sap-card-title">{i18n.currentLang === 'fr' ? 'Répartition du patrimoine' : 'Wealth Distribution'}</span>
             </div>
             <div class="sap-card-body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;">
               {#if totalWealth > 0}
@@ -2023,7 +2241,7 @@
                 </div>
               {:else}
                 <div style="text-align: center; color: var(--sap-text-muted-color); padding: 40px 0;">
-                  Données insuffisantes pour tracer le graphique.
+                  {i18n.currentLang === 'fr' ? 'Données insuffisantes pour tracer le graphique.' : 'Insufficient data to plot chart.'}
                 </div>
               {/if}
             </div>
@@ -2033,7 +2251,7 @@
         <!-- Latest Transactions Card -->
         <div class="sap-card">
           <div class="sap-card-header">
-            <span class="sap-card-title">Dernières opérations</span>
+            <span class="sap-card-title">{i18n.currentLang === 'fr' ? 'Dernières opérations' : 'Recent Operations'}</span>
           </div>
           <div class="sap-card-body">
             <table class="sap-table">
@@ -2041,7 +2259,7 @@
                 <tr>
                   <th>Date</th>
                   <th>Description</th>
-                  <th class="hide-on-mobile">Type de flux</th>
+                  <th class="hide-on-mobile">{i18n.currentLang === 'fr' ? 'Type de flux' : 'Flow Type'}</th>
                   <th style="text-align: right;">Montant</th>
                 </tr>
               </thead>
@@ -2063,7 +2281,7 @@
                 {#if transactions.length === 0}
                   <tr>
                     <td colspan="4" style="text-align: center; color: var(--sap-text-muted-color); padding: 20px;">
-                      Aucune transaction récente enregistrée.
+                      {i18n.currentLang === 'fr' ? 'Aucune transaction récente enregistrée.' : 'No recent transactions recorded.'}
                     </td>
                   </tr>
                 {/if}
@@ -2076,23 +2294,23 @@
       <!-- 2. ACCOUNTS VIEW -->
       {#if activeTab === 'comptes'}
         <div class="page-title-container">
-          <h1 class="page-title">Gestion des Comptes</h1>
-          <ui5-button icon="add" design="Emphasized" onclick={openAddAccount}>Nouveau Compte</ui5-button>
+          <h1 class="page-title">{i18n.t('acc.manageTitle')}</h1>
+          <ui5-button icon="add" design="Emphasized" onclick={openAddAccount}>{i18n.currentLang === 'fr' ? 'Nouveau Compte' : 'New Account'}</ui5-button>
         </div>
 
         <div class="sap-card">
           <div class="sap-card-header">
-            <span class="sap-card-title">Liste de vos comptes enregistrés</span>
+            <span class="sap-card-title">{i18n.currentLang === 'fr' ? 'Liste de vos comptes enregistrés' : 'List of your registered accounts'}</span>
           </div>
           <div class="sap-card-body">
             <table class="sap-table">
               <thead>
                 <tr>
                   <th>Libellé</th>
-                  <th>Type de Compte</th>
+                  <th>{i18n.currentLang === 'fr' ? 'Type de Compte' : 'Account Type'}</th>
                   <th class="hide-on-mobile">IBAN</th>
-                  <th style="text-align: right;">Solde Actuel</th>
-                  <th class="hide-on-mobile">Devise</th>
+                  <th style="text-align: right;">{i18n.currentLang === 'fr' ? 'Solde Actuel' : 'Current Balance'}</th>
+                  <th class="hide-on-mobile">{i18n.currentLang === 'fr' ? 'Devise' : 'Currency'}</th>
                   <th style="text-align: right;">Actions</th>
                 </tr>
               </thead>
@@ -2144,7 +2362,7 @@
       <!-- 3. SALARY DISTRIBUTION VIEW -->
       {#if activeTab === 'distribution'}
         <div class="page-title-container">
-          <h1 class="page-title">Distribution du Salaire</h1>
+          <h1 class="page-title">{i18n.t('split.title')}</h1>
         </div>
 
         <div class="sap-card" style="margin-bottom: 20px;">
@@ -2528,7 +2746,7 @@
       <!-- 4. GRAPHE DE TRANSIT VIEW -->
       {#if activeTab === 'graphe'}
         <div class="page-title-container">
-          <h1 class="page-title">Graphe de Transit des Flux</h1>
+          <h1 class="page-title">{i18n.t('graph.visualTitle')}</h1>
         </div>
 
         <div class="sap-card" style="height: calc(100vh - 180px); min-height: 600px; display: flex; flex-direction: column;">
@@ -2544,8 +2762,8 @@
             <div style="display: flex; gap: 8px;">
               <ui5-button icon="add" design="Emphasized" onclick={openAddNode}>Nouveau Nœud</ui5-button>
               <ui5-button icon="org-chart" design="Emphasized" onclick={openAddConnection}>Nouvelle Liaison</ui5-button>
-              <ui5-button icon="list" onclick={openManageNodes}>Gérer les Nœuds</ui5-button>
-              <ui5-button icon="settings" onclick={openManageConnections}>Gérer les Liaisons</ui5-button>
+              <ui5-button icon="list" onclick={openManageNodes}>{i18n.t('graph.btnNodes')}</ui5-button>
+              <ui5-button icon="settings" onclick={openManageConnections}>{i18n.currentLang === 'fr' ? 'Gérer les Liaisons' : 'Manage Connections'}</ui5-button>
             </div>
           </div>
           <div class="sap-card-body" style="padding: 0; flex: 1; position: relative; overflow: auto; background-color: #fafbfc;">
@@ -2638,7 +2856,7 @@
       <!-- 4b. CALENDAR VIEW -->
       {#if activeTab === 'calendar'}
         <div class="page-title-container">
-          <h1 class="page-title">Calendrier de Trésorerie Prévisionnel</h1>
+          <h1 class="page-title">{i18n.t('cal.previsionalTitle')}</h1>
           <ui5-button icon="refresh" design="Transparent" onclick={loadData} title="Actualiser les données"></ui5-button>
         </div>
 
@@ -2658,7 +2876,7 @@
               </div>
               
               <div class="form-group" style="margin: 0; min-width: 200px;">
-                <label for="cal-month-select" style="font-size: 11px; font-weight: bold; margin-bottom: 6px; display: block; color: var(--sap-text-muted-color);">PÉRIODE DE SIMULATION</label>
+                <label for="cal-month-select" style="font-size: 11px; font-weight: bold; margin-bottom: 6px; display: block; color: var(--sap-text-muted-color);">{i18n.currentLang === 'fr' ? 'PÉRIODE DE SIMULATION' : 'SIMULATION PERIOD'}</label>
                 <ui5-select id="cal-month-select" value={selectedMonthOffset.toString()} onchange={(e) => selectedMonthOffset = parseInt(e.target.value)} style="width: 100%;">
                   <ui5-option selected={selectedMonthOffset === 0 ? true : undefined} value="0">Mois en cours ({getMonthName(0)})</ui5-option>
                   <ui5-option selected={selectedMonthOffset === 1 ? true : undefined} value="1">Mois prochain ({getMonthName(1)})</ui5-option>
@@ -2776,7 +2994,7 @@
       <!-- 4. RECURRING DEBITS VIEW -->
       {#if activeTab === 'abonnements'}
         <div class="page-title-container">
-          <h1 class="page-title">Charges Périodiques & Abonnements</h1>
+          <h1 class="page-title">{i18n.t('rec.periodTitle')}</h1>
           <ui5-button icon="add" design="Emphasized" onclick={openAddDebit}>Nouvelle Charge</ui5-button>
         </div>
 
@@ -2857,7 +3075,7 @@
               <thead>
                 <tr>
                   <th>Nom de l'abonnement</th>
-                  <th class="hide-on-mobile">Jour du mois</th>
+                  <th class="hide-on-mobile">{i18n.currentLang === 'fr' ? 'Jour du mois' : 'Day of Month'}</th>
                   <th class="hide-on-mobile">Compte Débité</th>
                   <th>Montant Mensuel</th>
                   <th>État Actif</th>
@@ -2900,7 +3118,7 @@
       <!-- 5. EXECUTION LOGS VIEW -->
       {#if activeTab === 'logs'}
         <div class="page-title-container">
-          <h1 class="page-title">Journaux d'Exécution</h1>
+          <h1 class="page-title">{i18n.t('logs.title')}</h1>
           <ui5-button icon="refresh" design="Transparent" onclick={loadData}></ui5-button>
         </div>
 
@@ -2964,7 +3182,7 @@
             <table class="sap-table">
               <thead>
                 <tr>
-                  <th class="hide-on-mobile">Horodatage</th>
+                  <th class="hide-on-mobile">{i18n.currentLang === 'fr' ? 'Horodatage' : 'Timestamp'}</th>
                   <th>Statut</th>
                   <th>Message de l'opération</th>
                   <th style="text-align: right;">Détails</th>
@@ -3100,7 +3318,7 @@
 
 
 <!-- 2. ALLOCATION RULES DIALOG -->
-<ui5-dialog open={isRuleDialogOpen || undefined} bind:this={ruleDialogRef} header-text={isEditingRule ? "Modifier la Règle" : "Ajouter une Règle"}>
+<ui5-dialog open={isRuleDialogOpen || undefined} bind:this={ruleDialogRef} header-text={isEditingRule ? "Modifier la Règle" : "{i18n.currentLang === 'fr' ? 'Ajouter une Règle' : 'Add a Rule'}"}>
 
   <div style="padding: 16px; width: 340px; display: flex; flex-direction: column; gap: 16px;">
     <div class="form-group">
@@ -3314,7 +3532,7 @@
     </div>
 
     <div class="form-group">
-      <label for="conn-type">Type de règle</label>
+      <label for="conn-type">{i18n.currentLang === 'fr' ? 'Type de règle' : 'Rule Type'}</label>
       <ui5-select id="conn-type" value={connectionForm.TypeRegle} onchange={(e) => connectionForm.TypeRegle = e.target.value}>
         <ui5-option selected={connectionForm.TypeRegle === 'PERCENT' ? true : undefined} value="PERCENT">Pourcentage (%)</ui5-option>
         <ui5-option selected={connectionForm.TypeRegle === 'FIXED' ? true : undefined} value="FIXED">Montant Fixe (€)</ui5-option>
@@ -3341,7 +3559,7 @@
 </ui5-dialog>
 
 <!-- 7. MANAGE NODES DIALOG -->
-<ui5-dialog bind:this={nodesListDialogRef} header-text="Gérer les Nœuds du Graphe">
+<ui5-dialog bind:this={nodesListDialogRef} header-text="{i18n.currentLang === 'fr' ? 'Gérer les Nœuds' : 'Manage Nodes'} du Graphe">
   <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; width: 420px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
       <span style="font-size: 13px; color: var(--sap-text-muted-color);">Nœuds configurés :</span>

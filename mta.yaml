@@ -48,7 +48,7 @@ modules:
         properties:
           name: srv-api
           url: ~{srv-url}
-          forwardAuthToken: false
+          forwardAuthToken: true
       - name: patrimoine-html5-runtime
       - name: patrimoine-uaa
 

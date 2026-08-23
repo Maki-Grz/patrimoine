@@ -1,6 +1,6 @@
 {
   "name": "patrimoine",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "Sovereign, SAP-native personal financial wealth and management application.",
   "keywords": [
     "sap-cap",
@@ -23,15 +23,16 @@
   },
   "homepage": "https://github.com/Maki-Grz/patrimoine#readme",
   "dependencies": {
-    "@sap/cds": "^8.1.2",
-    "express": "^4.19.2"
+    "@sap/cds": "^10.0.6",
+    "express": "^5.2.1"
   },
   "devDependencies": {
-    "@cap-js/sqlite": "^1.7.5"
+    "@cap-js/sqlite": "^3.0.2"
   },
   "scripts": {
     "start": "cds-serve",
     "watch": "cds watch",
+    "build:frontend": "npm run build --prefix app",
     "build:backend": "npx --package @sap/cds-dk@9 cds build --production",
     "build": "npm run build:frontend && npm run build:backend"
   },
@@ -40,7 +41,12 @@
       "db": {
         "kind": "sql",
         "credentials": {
-          "database": "db.sqlite"
+          "url": "db.sqlite"
+        }
+      },
+      "auth": {
+        "[production]": {
+          "kind": "xsuaa"
         }
       }
     },
