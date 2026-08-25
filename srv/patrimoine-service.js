@@ -438,6 +438,37 @@ module.exports = cds.service.impl(async function () {
 
 			const result = await getSalarySplitTransactions(salaryAmount);
 
+			// Determine main checking account to credit the salary
+			let checkingAccountId = null;
+			const sourceNodes = await SELECT.from(FlowNodes).where({ Type: "Source" });
+			if (sourceNodes.length > 0 && sourceNodes[0].Account_ID) {
+				checkingAccountId = sourceNodes[0].Account_ID;
+			} else {
+				const checkingAcc = await SELECT.one.from(Accounts).where({ Type: "Courant" });
+				if (checkingAcc) {
+					checkingAccountId = checkingAcc.ID;
+				}
+			}
+
+			// Prepend the salary deposit transaction itself
+			if (checkingAccountId) {
+				const checkingAcc = await SELECT.one.from(Accounts).where({ ID: checkingAccountId });
+				const salaryTx = {
+					ID: cds.utils.uuid(),
+					Date: new Date().toISOString().slice(0, 19) + "Z",
+					Libelle: `Versement Salaire Mensuel`,
+					Montant: parseFloat(salaryAmount),
+					Type: "Entree",
+					AccountSource_ID: null,
+					AccountSourceLibelle: "Source externe",
+					AccountTarget_ID: checkingAccountId,
+					AccountTargetLibelle: checkingAcc ? checkingAcc.Libelle : "Compte Courant",
+					TypeRegle: "SALARY",
+					Valeur: parseFloat(salaryAmount),
+				};
+				result.transactions.unshift(salaryTx);
+			}
+
 			const pendingTxs = result.transactions.map((tx) => {
 				return {
 					ID: tx.ID || cds.utils.uuid(),

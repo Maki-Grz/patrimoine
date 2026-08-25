@@ -79,76 +79,6 @@ const dictionary = {
     "cal.previsionalTitle": "Calendrier de Trésorerie Prévisionnel",
     "cal.selectAccount": "Sélectionner un compte :",
     "cal.projectionLabel": "Projection sur :",
-
-        // Additional Dashboard keys
-    "dash.title": "Dashboard",
-    "dash.kpiWealth": "Total Gross Wealth",
-    "dash.kpiSavings": "Total Savings & Investments",
-    "dash.kpiCharges": "Monthly Fixed Charges",
-    "dash.kpiWealthSub": "Calculated on {count} accounts",
-    "dash.kpiSavingsSub": "Excludes checking account(s)",
-    "dash.kpiChargesSub": "Based on active subscriptions",
-    "dash.cardTitle": "Asset Summary",
-    "dash.manageAccounts": "Manage Accounts",
-    "dash.colAccount": "Account",
-    "dash.colType": "Investment Type",
-    "dash.colBalance": "Balance",
-    "dash.noAccounts": "No accounts configured. Go to \"Accounts\" to add accounts.",
-    "dash.titleRefresh": "Refresh data",
-    "dash.projectionTitle": "5-Year Wealth Projection",
-
-    // Logs Page
-    "logs.title": "Execution Logs",
-    "logs.subtitle": "Consult the history of salary distributions and technical error logs.",
-    "logs.colMsg": "Message",
-    "logs.colDetails": "Details",
-    "logs.detailsTitle": "Execution Log Details",
-
-    // Additional Account keys
-    "acc.manageTitle": "Manage Accounts",
-    "acc.btnCreate": "Create Account",
-    "acc.btnEdit": "Edit",
-    "acc.btnDelete": "Delete",
-    "acc.colLibelle": "Label",
-    "acc.colType": "Type",
-    "acc.colSolde": "Current Balance",
-    "acc.colTaux": "Interest Rate",
-    "acc.colPlacement": "Investment Category",
-    "acc.colMaturite": "Maturity Date",
-    "acc.actions": "Actions",
-    "acc.rulesTitle": "Active Distribution Rules",
-    "acc.rulesSubtitle": "Define how your net income is distributed across your accounts.",
-    "acc.addRule": "Add Rule",
-    "acc.colAccount": "Target Account",
-    "acc.colRuleType": "Rule Type",
-    "acc.colValue": "Value",
-
-    // Additional split keys
-    "split.rulesTab": "1. Classic Distribution Rules",
-    "split.graphTab": "2. Flow Chart Distribution (Visual)",
-    "split.simulateBtn": "Calculate Distribution",
-    "split.proposedTxs": "Proposed Split Transactions",
-    "split.execute": "Validate & Save Transfers",
-    "split.detailsTitle": "Visualization & Confirmation",
-
-    // Additional graph keys
-    "graph.visualTitle": "Cash Flow Graph",
-    "graph.createNode": "Create Node",
-    "graph.createConn": "Create Connection",
-    "graph.btnNodes": "Manage Nodes",
-    "graph.btnConns": "Manage Connections",
-
-    // Additional debits keys
-    "rec.periodTitle": "Recurring Charges & Subscriptions",
-    "rec.newDebit": "New Debit",
-    "rec.btnEdit": "Edit",
-    "rec.btnDelete": "Delete",
-
-    // Additional calendar keys
-    "cal.previsionalTitle": "Previsional Cash Flow Calendar",
-    "cal.selectAccount": "Select account:",
-    "cal.projectionLabel": "Projected for:",
-
     // Navigation
     "nav.dashboard": "Tableau de bord",
     "nav.accounts": "Mes Comptes & Patrimoine",
@@ -272,6 +202,75 @@ const dictionary = {
     "cal.projectionLabel": "Projection sur"
   },
   en: {
+    // Additional Dashboard keys
+    "dash.title": "Dashboard",
+    "dash.kpiWealth": "Total Gross Wealth",
+    "dash.kpiSavings": "Total Savings & Investments",
+    "dash.kpiCharges": "Monthly Fixed Charges",
+    "dash.kpiWealthSub": "Calculated on {count} accounts",
+    "dash.kpiSavingsSub": "Excludes checking account(s)",
+    "dash.kpiChargesSub": "Based on active subscriptions",
+    "dash.cardTitle": "Asset Summary",
+    "dash.manageAccounts": "Manage Accounts",
+    "dash.colAccount": "Account",
+    "dash.colType": "Investment Type",
+    "dash.colBalance": "Balance",
+    "dash.noAccounts": "No accounts configured. Go to \"Accounts\" to add accounts.",
+    "dash.titleRefresh": "Refresh data",
+    "dash.projectionTitle": "5-Year Wealth Projection",
+
+    // Logs Page
+    "logs.title": "Execution Logs",
+    "logs.subtitle": "Consult the history of salary distributions and technical error logs.",
+    "logs.colMsg": "Message",
+    "logs.colDetails": "Details",
+    "logs.detailsTitle": "Execution Log Details",
+
+    // Additional Account keys
+    "acc.manageTitle": "Manage Accounts",
+    "acc.btnCreate": "Create Account",
+    "acc.btnEdit": "Edit",
+    "acc.btnDelete": "Delete",
+    "acc.colLibelle": "Label",
+    "acc.colType": "Type",
+    "acc.colSolde": "Current Balance",
+    "acc.colTaux": "Interest Rate",
+    "acc.colPlacement": "Investment Category",
+    "acc.colMaturite": "Maturity Date",
+    "acc.actions": "Actions",
+    "acc.rulesTitle": "Active Distribution Rules",
+    "acc.rulesSubtitle": "Define how your net income is distributed across your accounts.",
+    "acc.addRule": "Add Rule",
+    "acc.colAccount": "Target Account",
+    "acc.colRuleType": "Rule Type",
+    "acc.colValue": "Value",
+
+    // Additional split keys
+    "split.rulesTab": "1. Classic Distribution Rules",
+    "split.graphTab": "2. Flow Chart Distribution (Visual)",
+    "split.simulateBtn": "Calculate Distribution",
+    "split.proposedTxs": "Proposed Split Transactions",
+    "split.execute": "Validate & Save Transfers",
+    "split.detailsTitle": "Visualization & Confirmation",
+
+    // Additional graph keys
+    "graph.visualTitle": "Cash Flow Graph",
+    "graph.createNode": "Create Node",
+    "graph.createConn": "Create Connection",
+    "graph.btnNodes": "Manage Nodes",
+    "graph.btnConns": "Manage Connections",
+
+    // Additional debits keys
+    "rec.periodTitle": "Recurring Charges & Subscriptions",
+    "rec.newDebit": "New Debit",
+    "rec.btnEdit": "Edit",
+    "rec.btnDelete": "Delete",
+
+    // Additional calendar keys
+    "cal.previsionalTitle": "Previsional Cash Flow Calendar",
+    "cal.selectAccount": "Select account:",
+    "cal.projectionLabel": "Projected for:",
+
     // Navigation
     "nav.dashboard": "Dashboard",
     "nav.accounts": "Accounts & Wealth",
