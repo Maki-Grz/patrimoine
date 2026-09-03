@@ -14,7 +14,14 @@ service PatrimoineService {
     entity PendingTransactions as projection on my.PendingTransactions;
 
 
-    action processSalarySplit(salaryAmount: Decimal(15,2)) returns ExecutionLogs;
-    action calculateSalarySplit(salaryAmount: Decimal(15,2)) returns String;
+    action processSalarySplit(salaryAmount: Decimal(15,2), deductLivingBudget: Boolean) returns ExecutionLogs;
+    action calculateSalarySplit(salaryAmount: Decimal(15,2), deductLivingBudget: Boolean) returns String;
     action saveConfirmedSalarySplit(transactionsJson: String, salaryAmount: Decimal(15,2)) returns ExecutionLogs;
+    action recomputeAccountBalances() returns String;
+    action resetToDemoData() returns String;
+    action clearAllData() returns String;
+    function getMonthlyBudgetSummary() returns String;
+    function getUserProfile() returns String;
+    action updateUserProfile(preferencesJson: String) returns String;
+    function exportUserData() returns String;
 }

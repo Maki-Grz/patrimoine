@@ -10,7 +10,10 @@ db/data/*.csv
 # Local configurations and private files
 .cdsrc-private.json
 default-*.json
-*.sqlite
+*.sqlite*
+*.sqlite-shm
+*.sqlite-wal
+db.sqlite*
 .env
 .env.*
 .env.local

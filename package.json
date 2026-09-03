@@ -1,6 +1,6 @@
 {
   "name": "patrimoine",
-  "version": "0.1.0-alpha.3",
+  "version": "0.1.0-beta.1",
   "description": "Sovereign, SAP-native personal financial wealth and management application.",
   "keywords": [
     "sap-cap",
@@ -32,9 +32,13 @@
   "scripts": {
     "start": "cds-serve",
     "watch": "cds watch",
+    "test": "node --test test/patrimoine-service.test.js",
     "build:frontend": "npm run build --prefix app",
-    "build:backend": "npx --package @sap/cds-dk@9 cds build --production",
-    "build": "npm run build:frontend && npm run build:backend"
+    "build:backend": "cds build --production",
+    "build": "npm run build:frontend && npm run build:backend",
+    "db:deploy": "cds deploy --to sqlite:db.sqlite",
+    "db:clean": "node srv/clean-db.js",
+    "db:seed": "node srv/seed-demo.js"
   },
   "cds": {
     "requires": {

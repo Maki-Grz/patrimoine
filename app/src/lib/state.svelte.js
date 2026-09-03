@@ -22,10 +22,18 @@ class AppState {
   nodeAllocatedAmounts = $state({});
 
   // Salary Split & Wizard states
-  currentSalaryAmount = $state(3200);
+  currentSalaryAmount = $state(1458.25);
   proposedTransactions = $state([]);
   pendingTransactions = $state([]);
   wizardActiveStep = $state(1);
+
+  // Budget & Everyday Expenses states
+  budgetSummary = $state(null);
+  isExpenseDialogOpen = $state(false);
+
+  // User Profile & BTP Integration states
+  userProfile = $state(null);
+  isProfileDialogOpen = $state(false);
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -86,75 +94,260 @@ class AppState {
   }
 
   /**
-   * Loads all financial data, configurations, rules, and logs from the CAP OData backend.
+   * Loads all core business datasets with resilience (Promise.allSettled).
    * @returns {Promise<void>}
    */
   async loadData() {
     this.loading = true;
     try {
-      const [accRes, salRes, txRes, debRes, logRes, nodeRes, connRes, rateRes, stockRes, pendingRes] = await Promise.all([
-        fetch('/odata/v4/patrimoine/Accounts'),
-        fetch('/odata/v4/patrimoine/SalaryConfig'),
-        fetch('/odata/v4/patrimoine/Transactions?$orderby=Date desc'),
-        fetch('/odata/v4/patrimoine/RecurringDebits?$expand=Account'),
-        fetch('/odata/v4/patrimoine/ExecutionLogs?$orderby=Timestamp desc'),
-        fetch('/odata/v4/patrimoine/FlowNodes?$expand=Account'),
-        fetch('/odata/v4/patrimoine/FlowConnections'),
-        fetch('/odata/v4/patrimoine/InterestRateHistory'),
-        fetch('/odata/v4/patrimoine/StockFluctuations'),
-        fetch('/odata/v4/patrimoine/PendingTransactions?$expand=AccountSource,AccountTarget')
-      ]);
+      const endpoints = [
+        { key: 'accounts', url: '/odata/v4/patrimoine/Accounts?$orderby=Ordre asc,Libelle asc', handler: (data) => { this.accounts = data.value || []; } },
+        { key: 'salaryConfig', url: '/odata/v4/patrimoine/SalaryConfig', handler: (data) => {
+            this.salaryConfig = data.value && data.value[0] ? data.value[0] : null;
+            if (this.salaryConfig) {
+              this.currentSalaryAmount = parseFloat(this.salaryConfig.MontantNet);
+            }
+          }
+        },
+        { key: 'transactions', url: '/odata/v4/patrimoine/Transactions?$orderby=Date desc', handler: (data) => { this.transactions = data.value || []; } },
+        { key: 'recurringDebits', url: '/odata/v4/patrimoine/RecurringDebits?$expand=Account', handler: (data) => { this.recurringDebits = data.value || []; } },
+        { key: 'executionLogs', url: '/odata/v4/patrimoine/ExecutionLogs?$orderby=Timestamp desc', handler: (data) => { this.executionLogs = data.value || []; } },
+        { key: 'flowNodes', url: '/odata/v4/patrimoine/FlowNodes?$expand=Account', handler: (data) => { this.flowNodes = data.value || []; } },
+        { key: 'flowConnections', url: '/odata/v4/patrimoine/FlowConnections', handler: (data) => { this.flowConnections = data.value || []; } },
+        { key: 'interestRateHistory', url: '/odata/v4/patrimoine/InterestRateHistory', handler: (data) => { this.interestRateHistory = data.value || []; } },
+        { key: 'stockFluctuations', url: '/odata/v4/patrimoine/StockFluctuations', handler: (data) => { this.stockFluctuations = data.value || []; } },
+        { key: 'pendingTransactions', url: '/odata/v4/patrimoine/PendingTransactions?$expand=AccountSource,AccountTarget', handler: (data) => {
+            const rawPending = data.value || [];
+            this.pendingTransactions = rawPending.map(item => ({ ...item, checked: true }));
+            if (this.pendingTransactions.length > 0 && this.wizardActiveStep === 1) {
+              this.wizardActiveStep = 4;
+            }
+          }
+        }
+      ];
 
-      if (accRes.ok) {
-        const data = await accRes.json();
-        this.accounts = data.value || [];
+      const results = await Promise.allSettled(
+        endpoints.map(async (ep) => {
+          const res = await fetch(ep.url);
+          if (!res.ok) throw new Error(`HTTP ${res.status} on ${ep.url}`);
+          const data = await res.json();
+          ep.handler(data);
+        })
+      );
+
+      const failures = results.filter(r => r.status === 'rejected');
+      if (failures.length > 0 && failures.length === endpoints.length) {
+        this.showToast("Erreur de connexion avec le serveur CAP.");
       }
-      if (salRes.ok) {
-        const data = await salRes.json();
-        this.salaryConfig = data.value && data.value[0] ? data.value[0] : null;
-        if (this.salaryConfig) {
-          this.currentSalaryAmount = parseFloat(this.salaryConfig.MontantNet);
-        }
-      }
-      if (txRes.ok) {
-        const data = await txRes.json();
-        this.transactions = data.value || [];
-      }
-      if (debRes.ok) {
-        const data = await debRes.json();
-        this.recurringDebits = data.value || [];
-      }
-      if (logRes.ok) {
-        const data = await logRes.json();
-        this.executionLogs = data.value || [];
-      }
-      if (nodeRes.ok) {
-        const data = await nodeRes.json();
-        this.flowNodes = data.value || [];
-      }
-      if (connRes.ok) {
-        const data = await connRes.json();
-        this.flowConnections = data.value || [];
-      }
-      if (rateRes.ok) {
-        const data = await rateRes.json();
-        this.interestRateHistory = data.value || [];
-      }
-      if (stockRes.ok) {
-        const data = await stockRes.json();
-        this.stockFluctuations = data.value || [];
-      }
-      if (pendingRes.ok) {
-        const data = await pendingRes.json();
-        const rawPending = data.value || [];
-        this.pendingTransactions = rawPending.map(item => ({ ...item, checked: true }));
-        if (this.pendingTransactions.length > 0 && this.wizardActiveStep === 1) {
-          this.wizardActiveStep = 4;
-        }
-      }
+
+      await this.loadBudgetSummary();
+      await this.loadUserProfile();
     } catch (err) {
       console.error("Erreur de chargement des données : ", err);
       this.showToast("Erreur de connexion avec le serveur CAP.");
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  /**
+   * Loads monthly budget summary from CAP function getMonthlyBudgetSummary.
+   */
+  async loadBudgetSummary() {
+    try {
+      const res = await fetch('/odata/v4/patrimoine/getMonthlyBudgetSummary()');
+      if (res.ok) {
+        const raw = await res.json();
+        this.budgetSummary = JSON.parse(raw.value || '{}');
+      }
+    } catch (e) {
+      console.warn("Could not load budget summary:", e);
+    }
+  }
+
+  /**
+   * Loads user profile and SAP BTP authentication metadata.
+   */
+  async loadUserProfile() {
+    try {
+      const res = await fetch('/odata/v4/patrimoine/getUserProfile()');
+      if (res.ok) {
+        const raw = await res.json();
+        this.userProfile = JSON.parse(raw.value || '{}');
+        if (this.userProfile?.preferences?.montantNet) {
+          this.currentSalaryAmount = this.userProfile.preferences.montantNet;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load user profile:", e);
+    }
+  }
+
+  /**
+   * Updates user profile financial preferences in backend.
+   */
+  async updateUserProfile(preferences) {
+    this.loading = true;
+    try {
+      const res = await fetch('/odata/v4/patrimoine/updateUserProfile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preferencesJson: JSON.stringify(preferences) })
+      });
+      if (res.ok) {
+        this.showToast("Préférences du profil sauvegardées avec succès.");
+        await this.loadUserProfile();
+        await this.loadBudgetSummary();
+        await this.loadData();
+        return true;
+      } else {
+        this.showToast("Erreur lors de la sauvegarde du profil.");
+        return false;
+      }
+    } catch (e) {
+      this.showToast("Erreur réseau lors de la mise à jour du profil.");
+      return false;
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  /**
+   * Quick expense creator for daily debits (courses, restaurants, etc.).
+   */
+  async createExpense({ montant, libelle, categorie, accountId, date }) {
+    this.loading = true;
+    try {
+      const payload = {
+        ID: this.generateUUID(),
+        Date: date || new Date().toISOString().slice(0, 19) + 'Z',
+        Libelle: libelle,
+        Montant: parseFloat(montant),
+        Type: 'Sortie',
+        Categorie: categorie || 'Alimentation',
+        Statut: 'Execute',
+        AccountSource_ID: accountId,
+        AccountTarget_ID: null
+      };
+
+      const res = await fetch('/odata/v4/patrimoine/Transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        this.showToast(`Dépense "${libelle}" (${this.formatCurrency(montant)}) enregistrée.`);
+        await this.loadData();
+        return true;
+      } else {
+        const err = await res.json();
+        this.showToast("Erreur: " + (err.error?.message || "Impossible d'enregistrer la dépense."));
+        return false;
+      }
+    } catch (e) {
+      this.showToast("Erreur réseau lors de la création de la dépense.");
+      return false;
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  /**
+   * Resets database state to default French wealth demo accounts.
+   */
+  async resetDemoData() {
+    this.loading = true;
+    try {
+      const res = await fetch('/odata/v4/patrimoine/resetToDemoData', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (res.ok) {
+        this.showToast("Données de démonstration réinitialisées avec succès.");
+        await this.loadData();
+      } else {
+        this.showToast("Erreur lors de la réinitialisation.");
+      }
+    } catch (e) {
+      this.showToast("Erreur réseau.");
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  /**
+   * Wipes all database tables to start with an empty database (zero data).
+   */
+  async clearAllData() {
+    this.loading = true;
+    try {
+      const res = await fetch('/odata/v4/patrimoine/clearAllData', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (res.ok) {
+        this.showToast("Base de données vidée (mode vierge sans données).");
+        await this.loadData();
+      } else {
+        this.showToast("Erreur lors de la purge de la base de données.");
+      }
+    } catch (e) {
+      this.showToast("Erreur réseau.");
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  /**
+   * Reconciles and recomputes all account balances from transaction ledger.
+   */
+  async recomputeBalances() {
+    this.loading = true;
+    try {
+      const res = await fetch('/odata/v4/patrimoine/recomputeAccountBalances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (res.ok) {
+        const msg = await res.json();
+        this.showToast(msg.value || "Rapprochement bancaire effectué avec succès.");
+        await this.loadData();
+      } else {
+        this.showToast("Erreur lors du rapprochement bancaire.");
+      }
+    } catch (e) {
+      this.showToast("Erreur réseau.");
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  /**
+   * RGPD Article 20: Exports all user data as a downloadable JSON file.
+   */
+  async exportUserData() {
+    this.loading = true;
+    try {
+      const res = await fetch('/odata/v4/patrimoine/exportUserData()');
+      if (res.ok) {
+        const raw = await res.json();
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(raw.value || '{}');
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `patrimoine-rgpd-export-${new Date().toISOString().slice(0,10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        this.showToast("Export de vos données RGPD généré avec succès.");
+      } else {
+        this.showToast("Erreur lors de l'exportation des données.");
+      }
+    } catch (e) {
+      this.showToast("Erreur réseau lors de l'export.");
     } finally {
       this.loading = false;
     }

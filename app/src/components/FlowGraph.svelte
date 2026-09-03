@@ -15,7 +15,7 @@
   let nodeForm = $state({ Label: '', Type: 'Transit', Account_ID: '' });
   let connectionForm = $state({ SourceNode_ID: '', TargetNode_ID: '', TypeRegle: 'PERCENT', Valeur: 0 });
 
-  // Drag & drop handlers
+  // Drag & drop handlers with window-level tracking
   function handleMouseDown(e, node) {
     activeDragNode = node;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -23,6 +23,8 @@
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
     };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
   }
 
   function handleMouseMove(e) {
@@ -32,12 +34,23 @@
       const containerRect = container.getBoundingClientRect();
       const x = Math.round(e.clientX - containerRect.left - dragOffset.x);
       const y = Math.round(e.clientY - containerRect.top - dragOffset.y);
-      activeDragNode.PosX = Math.max(10, Math.min(680, x));
-      activeDragNode.PosY = Math.max(10, Math.min(480, y));
+
+      const nodeWidth = 190;
+      const nodeHeight = 110;
+      // Allow dragging across the ENTIRE container width (right third included) and height
+      const containerW = Math.max(container.clientWidth, container.scrollWidth, 1200);
+      const containerH = Math.max(container.clientHeight, container.scrollHeight, 650);
+      const maxX = containerW - nodeWidth - 15;
+      const maxY = containerH - nodeHeight - 15;
+
+      activeDragNode.PosX = Math.max(10, Math.min(maxX, x));
+      activeDragNode.PosY = Math.max(10, Math.min(maxY, y));
     }
   }
 
   async function handleMouseUp() {
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
     if (activeDragNode) {
       const nodeToSave = activeDragNode;
       activeDragNode = null;
@@ -347,8 +360,8 @@
     </div>
   </div>
   <div class="sap-card-body" style="padding: 0; flex: 1; position: relative; overflow: auto; background-color: #fafbfc;">
-    <div class="flow-graph-container" id="flow-graph-container" style="width: 100%; height: 100%; min-width: 960px; min-height: 540px; position: relative; margin-top: 0; border: none; border-radius: 0;" onmousemove={handleMouseMove} onmouseup={handleMouseUp}>
-      <svg style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none;">
+    <div class="flow-graph-container" id="flow-graph-container" style="width: 100%; height: 100%; min-width: 1200px; min-height: 650px; position: relative; margin-top: 0; border: none; border-radius: 0; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 24px 24px;" onmousemove={handleMouseMove} onmouseup={handleMouseUp}>
+      <svg style="position: absolute; width: 100%; height: 100%; min-width: 1200px; min-height: 650px; top: 0; left: 0; pointer-events: none;">
         <defs>
           <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--sap-primary-color)" />

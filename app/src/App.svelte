@@ -33,6 +33,7 @@
   import FlowGraph from './components/FlowGraph.svelte';
   import CashCalendar from './components/CashCalendar.svelte';
   import RecurringDebits from './components/RecurringDebits.svelte';
+  import Expenses from './components/Expenses.svelte';
   import ExecutionLogs from './components/ExecutionLogs.svelte';
 
   onMount(() => {
@@ -63,6 +64,8 @@
         <CashCalendar />
       {:else if appState.activeTab === 'abonnements'}
         <RecurringDebits />
+      {:else if appState.activeTab === 'depenses'}
+        <Expenses />
       {:else if appState.activeTab === 'logs'}
         <ExecutionLogs />
       {/if}

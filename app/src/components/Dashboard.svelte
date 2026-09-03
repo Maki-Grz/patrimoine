@@ -9,7 +9,7 @@
 
   // Color Palette for charts
   const COLORS = ['#0a6ed1', '#107e3e', '#e9730c', '#6f42c1', '#17a2b8', '#007bff', '#28a745', '#ffc107', '#dc3545'];
-  
+
   function getColor(index) {
     return COLORS[index % COLORS.length];
   }
@@ -24,28 +24,28 @@
     if (totalWealth <= 0) return [];
     let cumulativePercent = 0;
     const activeAccounts = appState.accounts.filter(a => parseFloat(a.SoldeActuel) > 0);
-    
+
     return activeAccounts.map((account, index) => {
       const percent = parseFloat(account.SoldeActuel) / totalWealth;
       const [startX, startY] = getCoordinatesForPercent(cumulativePercent);
       cumulativePercent += percent;
       const [endX, endY] = getCoordinatesForPercent(cumulativePercent);
-      
+
       const largeArcFlag = percent > 0.5 ? 1 : 0;
       const r = 80;
-      
+
       const startXScaled = startX * r;
       const startYScaled = startY * r;
       const endXScaled = endX * r;
       const endYScaled = endY * r;
-      
+
       let pathData;
       if (percent >= 0.999) {
         pathData = `M 0 ${-r} A ${r} ${r} 0 1 1 -0.01 ${-r} Z`;
       } else {
         pathData = `M 0 0 L ${startXScaled} ${startYScaled} A ${r} ${r} 0 ${largeArcFlag} 1 ${endXScaled} ${endYScaled} Z`;
       }
-      
+
       return {
         d: pathData,
         color: getColor(index),
@@ -62,7 +62,7 @@
     const currentYear = new Date().getFullYear();
     const yearlyNetSalary = appState.salaryConfig ? parseFloat(appState.salaryConfig.MontantNet || 0) * 12 : appState.currentSalaryAmount * 12;
     const yearlyCharges = totalCharges * 12;
-    
+
     // Copy initial balances
     let balances = appState.accounts.map(a => ({
       id: a.ID,
@@ -88,7 +88,7 @@
 
         // Add net savings from salary (salary - charges)
         const netAddition = Math.max(0, yearlyNetSalary - yearlyCharges);
-        
+
         // Distribute net addition to checking accounts proportionally or just add it
         const firstChecking = balances.find(b => b.type === 'Courant');
         if (firstChecking) {
@@ -132,6 +132,45 @@
   </div>
 </div>
 
+<!-- Living Budget / Reste à Vivre Banner -->
+{#if appState.budgetSummary}
+  {@const budget = appState.budgetSummary}
+  {@const pct = Math.round(((budget.depensesCeMois || 0) / (budget.budgetTotal || 1)) * 100)}
+  <div style="background: #ffffff; border-radius: 6px; box-shadow: var(--sap-shadow-card); padding: 16px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; border-left: 5px solid {pct > 100 ? '#d9383a' : (pct >= 80 ? '#e9730c' : '#107e3e')};">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 20px;">🛒</span>
+        <div>
+          <div style="font-size: 14px; font-weight: bold; color: var(--sap-text-color);">Reste à Vivre & Dépenses Quotidiennes</div>
+          <div style="font-size: 11px; color: var(--sap-text-muted-color);">Suivi en direct des courses, restaurants et sorties du mois</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <ui5-button design="Emphasized" icon="add" onclick={() => appState.activeTab = 'depenses'}> Dépense</ui5-button>
+        <ui5-button design="Transparent" icon="navigation-right-arrow" onclick={() => appState.activeTab = 'depenses'}>Détails</ui5-button>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div style="width: 100%; background: #e5e7eb; border-radius: 4px; height: 8px; overflow: hidden;">
+      <div style="width: {Math.min(100, Math.max(0, pct))}%; height: 100%; background: {pct > 100 ? '#d9383a' : (pct >= 80 ? '#e9730c' : '#107e3e')}; transition: width 0.3s ease;"></div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px;">
+      <div>
+        <span style="color: var(--sap-text-muted-color);">Dépensé :</span>
+        <strong style="color: {pct > 100 ? '#d9383a' : 'var(--sap-text-color)'};"> {appState.formatCurrency(budget.depensesCeMois)}</strong>
+        <span style="color: var(--sap-text-muted-color);"> / Budget {appState.formatCurrency(budget.budgetTotal)} ({pct}%)</span>
+      </div>
+      <div>
+        <span style="color: var(--sap-text-muted-color);">Disponible :</span>
+        <strong style="color: {budget.resteAVivre < 0 ? '#d9383a' : '#107e3e'}; font-size: 13px;"> {appState.formatCurrency(budget.resteAVivre)}</strong>
+        <span style="color: var(--sap-text-muted-color); font-size: 11px;"> (~{appState.formatCurrency(budget.rythmeJournalier)} / jour, reste {budget.joursRestants}j)</span>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <!-- Secondary Grid -->
 <div class="grid-2col">
   <!-- Left: Accounts summary -->
@@ -152,14 +191,35 @@
         <tbody>
           {#each appState.accounts as acc}
             <tr>
-              <td style="font-weight: 600;">{acc.Libelle}</td>
+              <td style="font-weight: 600;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  {#if acc.Couleur}
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background-color: {acc.Couleur}; display: inline-block; flex-shrink: 0;"></span>
+                  {/if}
+                  <span>{acc.Libelle}</span>
+                </div>
+                {#if acc.Etablissement}
+                  <div style="font-size: 11px; color: var(--sap-text-muted-color); font-weight: normal; margin-top: 2px;">
+                    🏛️ {acc.Etablissement}
+                  </div>
+                {/if}
+              </td>
               <td>
                 <span class="badge" style="background-color: var(--sap-background-color); color: var(--sap-text-color);">
                   {acc.Type}
                 </span>
               </td>
               <td style="text-align: right; font-weight: bold; color: {acc.SoldeActuel < 0 ? 'var(--sap-error-color)' : 'var(--sap-text-color)'}">
-                {appState.formatCurrency(acc.SoldeActuel)}
+                <div>{appState.formatCurrency(acc.SoldeActuel)}</div>
+                {#if acc.Plafond && parseFloat(acc.Plafond) > 0}
+                  {@const ratio = Math.round((parseFloat(acc.SoldeActuel || 0) / parseFloat(acc.Plafond)) * 100)}
+                  <div style="font-size: 10px; font-weight: normal; color: {ratio > 100 ? '#d9383a' : 'var(--sap-text-muted-color)'}; margin-top: 2px;">
+                    {ratio}% du plafond
+                  </div>
+                  <div style="width: 90px; margin-left: auto; background: #e5e7eb; border-radius: 3px; height: 4px; overflow: hidden; margin-top: 2px;">
+                    <div style="width: {Math.min(100, Math.max(0, ratio))}%; height: 100%; background: {ratio > 100 ? '#d9383a' : (ratio >= 85 ? '#e9730c' : '#107e3e')};"></div>
+                  </div>
+                {/if}
               </td>
             </tr>
           {/each}
@@ -218,11 +278,11 @@
   </div>
   <div class="sap-card-body" style="padding: 20px;">
     <p style="font-size: 12px; color: var(--sap-text-muted-color); margin-bottom: 20px; font-style: italic;">
-      {i18n.currentLang === 'fr' 
+      {i18n.currentLang === 'fr'
         ? "Note : Cette projection est une simulation d'évolution du patrimoine à 5 ans basée sur les taux d'intérêt/performance de vos comptes et l'épargne résiduelle mensuelle (salaire net moins charges fixes)."
         : "Note: This projection is a 5-year wealth simulation based on interest/performance rates of your accounts and monthly residual savings (net salary minus fixed charges)."}
     </p>
-    
+
     <!-- SVG Bar Chart -->
     <div style="width: 100%; height: 220px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 20px 10px 10px 10px; border-bottom: 2px solid var(--sap-border-color); overflow-x: auto;">
       {#each projectionData as item}
@@ -232,7 +292,7 @@
           <span style="font-size: 11px; font-weight: bold; color: var(--sap-primary-color); white-space: nowrap;">
             {appState.formatCurrency(item.wealth)}
           </span>
-          <div 
+          <div
             style="width: 100%; height: {heightPercent}%; max-height: 140px; background: linear-gradient(180deg, var(--sap-primary-color) 0%, rgba(10, 110, 209, 0.4) 100%); border-radius: 4px 4px 0 0; transition: height 0.5s ease-in-out; cursor: pointer;"
             title="Patrimoine projeté en {item.label} : {appState.formatCurrency(item.wealth)}">
           </div>
@@ -270,8 +330,8 @@
                 {tx.Type === 'Virement_Split' ? 'Virement Split' : tx.Type}
               </span>
             </td>
-            <td style="text-align: right; font-weight: bold; color: {tx.Type === 'Sortie' ? 'var(--sap-error-color)' : 'var(--sap-success-color)'}">
-              {tx.Type === 'Sortie' ? '-' : '+'}{appState.formatCurrency(tx.Montant)}
+            <td style="text-align: right; font-weight: bold; color: {tx.Type === 'Entree' ? 'var(--sap-success-color)' : 'var(--sap-error-color)'}">
+              {tx.Type === 'Entree' ? '+' : '-'}{appState.formatCurrency(tx.Montant)}
             </td>
           </tr>
         {/each}

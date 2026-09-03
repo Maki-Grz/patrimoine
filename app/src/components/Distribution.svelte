@@ -8,9 +8,11 @@
   let pendingForm = $state({ ID: '', Libelle: '', Montant: 0, AccountSource_ID: '', AccountTarget_ID: '' });
 
   // Auto-calculation split background effect with debounce
+  let deductLivingBudget = $state(false);
   let salaryDebounceTimeout;
   $effect(() => {
     const amount = appState.currentSalaryAmount;
+    const deduct = deductLivingBudget;
     if (amount > 0 && appState.activeTab === 'distribution') {
       clearTimeout(salaryDebounceTimeout);
       salaryDebounceTimeout = setTimeout(async () => {
@@ -19,7 +21,7 @@
           const res = await fetch('/odata/v4/patrimoine/calculateSalarySplit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ salaryAmount: amount })
+            body: JSON.stringify({ salaryAmount: amount, deductLivingBudget: deduct })
           });
           if (res.ok) {
             const result = await res.json();
@@ -97,8 +99,8 @@
     let cumulativePercent = 0;
 
     function getCoordinatesForPercent(percent) {
-      const x = Math.cos(2 * Math.PI * percent);
-      const y = Math.sin(2 * Math.PI * percent);
+      const x = Math.cos(2 * Math.PI * percent - Math.PI / 2);
+      const y = Math.sin(2 * Math.PI * percent - Math.PI / 2);
       return [x, y];
     }
 
@@ -697,16 +699,31 @@
 
             <!-- Health status widgets -->
             <div style="border: 1px solid var(--sap-border-color); border-radius: 6px; padding: 16px; background: var(--sap-background-color); display: flex; flex-direction: column; gap: 10px;">
-              <h4 style="margin: 0; font-weight: bold; font-size: 13px; color: var(--sap-primary-color);">Diagnostic de votre Budget Fixe :</h4>
+              <h4 style="margin: 0; font-weight: bold; font-size: 13px; color: var(--sap-primary-color);">Diagnostic du Salaire & Sanctuarisation :</h4>
               <div style="display: flex; justify-content: space-between; font-size: 12.5px;">
-                <span style="color: var(--sap-text-muted-color);">Charges mensuelles actives (loyer, abonnements, etc.) :</span>
+                <span style="color: var(--sap-text-muted-color);">Charges mensuelles fixes (loyer, abonnements) :</span>
                 <strong style="color: var(--sap-error-color);">{appState.formatCurrency(totalCharges)}</strong>
               </div>
+              <div style="display: flex; justify-content: space-between; font-size: 12.5px;">
+                <span style="color: var(--sap-text-muted-color);">Budget Vie Quotidienne (courses, restos, sorties) :</span>
+                <strong style="color: #e9730c;">{appState.formatCurrency(appState.budgetSummary?.budgetTotal || 800)}</strong>
+              </div>
               <div style="display: flex; justify-content: space-between; font-size: 12.5px; border-top: 1px dashed var(--sap-border-color); padding-top: 8px;">
-                <span style="color: var(--sap-text-muted-color); font-weight: bold;">Reste à vivre après charges fixes :</span>
-                <strong style="color: {remainingAfterCharges < 0 ? 'var(--sap-error-color)' : 'var(--sap-success-color)'}; font-size: 13.5px;">
-                  {appState.formatCurrency(remainingAfterCharges)}
+                <span style="color: var(--sap-text-muted-color); font-weight: bold;">Capacité d'épargne nette (surplus distribuable) :</span>
+                <strong style="color: {Math.max(0, appState.currentSalaryAmount - totalCharges - (appState.budgetSummary?.budgetTotal || 800)) > 0 ? 'var(--sap-success-color)' : 'var(--sap-warning-color)'}; font-size: 13.5px;">
+                  {appState.formatCurrency(Math.max(0, appState.currentSalaryAmount - totalCharges - (appState.budgetSummary?.budgetTotal || 800)))}
                 </strong>
+              </div>
+
+              <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--sap-border-color); display: flex; align-items: center; justify-content: space-between;">
+                <label for="switch-living-budget" style="font-size: 12px; font-weight: 600; cursor: pointer; color: var(--sap-text-color);">
+                  🛡️ Déduire le budget de vie ({appState.formatCurrency(appState.budgetSummary?.budgetTotal || 800)}) et charges avant répartition
+                </label>
+                <ui5-switch 
+                  id="switch-living-budget"
+                  checked={deductLivingBudget || undefined}
+                  onchange={(e) => deductLivingBudget = e.target.checked}>
+                </ui5-switch>
               </div>
             </div>
 

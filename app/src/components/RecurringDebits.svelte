@@ -60,8 +60,10 @@
         ID: appState.generateUUID(),
         Date: new Date().toISOString().slice(0, 19) + 'Z',
         Libelle: `Virement manuel : ${selectedPaymentDebit.Libelle}`,
-        Montant: -parseFloat(manualPaymentAmount),
-        Type: 'Abonnement',
+        Montant: parseFloat(manualPaymentAmount),
+        Type: 'Sortie',
+        Categorie: selectedPaymentDebit.Categorie || 'Factures',
+        Statut: 'Execute',
         AccountSource_ID: selectedPaymentDebit.Account_ID,
         AccountTarget_ID: null
       };

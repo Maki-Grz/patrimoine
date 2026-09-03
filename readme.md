@@ -4,14 +4,14 @@
 
 ---
 
-[![Project Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg?style=flat-flat&logo=github)](https://github.com/Maki-Grz/patrimoine)
+[![Project Status: Beta](https://img.shields.io/badge/status-beta-blue.svg?style=flat-flat&logo=github)](https://github.com/Maki-Grz/patrimoine)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Built with SAP CAP](https://img.shields.io/badge/SAP-CAP%20Node.js-blue?logo=sap)](https://cap.cloud.sap)
 [![Svelte](https://img.shields.io/badge/Frontend-Svelte_5-ff3e00?logo=svelte)](https://svelte.dev)
 
 > [!IMPORTANT]
-> **ALPHA RELEASE STATUS**
-> This repository is in an early **Alpha** development phase. Features, data structures, and APIs are subject to change without prior notice. Testing is encouraged, and feedback, suggestions, or bug reports are highly welcome via GitHub issues. Do not use this software for production-critical financial transactions without verification.
+> **BETA RELEASE STATUS (v0.1.0-beta.1)**
+> This repository is now in **Beta** release phase. Core features (multi-account management, DAG flow graphs, living budget tracking, previsional cash calendar, bilingual i18n FR/EN, and GDPR-by-design compliance) are fully implemented and covered by automated test suites. Community testing and feedback are warmly welcomed.
 
 ---
 

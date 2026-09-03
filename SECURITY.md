@@ -6,12 +6,12 @@ We take the security and privacy of your personal financial data very seriously.
 
 ## Supported Versions
 
-Currently, the project is in **Alpha**. We actively support and patch the latest pre-release version. 
+Currently, the project is in **Beta**. We actively support and patch the latest pre-release version. 
 
 | Version | Supported |
 | ------- | --------- |
-| `< 0.1.0-alpha.x` | Yes (Active development) |
-| Older releases | No |
+| `0.1.0-beta.x` | Yes (Active development) |
+| `< 0.1.0-alpha.x` | No (Superseded by Beta) |
 
 ---
 

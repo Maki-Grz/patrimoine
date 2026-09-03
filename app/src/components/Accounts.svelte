@@ -10,13 +10,47 @@
   let accountForm = $state({
     ID: '',
     Libelle: '',
-    Type: 'Courant',
+    Type: 'Compte Courant',
     SoldeActuel: 0,
     TypePlacement: 'Courant',
     DateMaturite: '',
     TauxActuel: 0,
-    IBAN: ''
+    IBAN: '',
+    Plafond: '',
+    Etablissement: '',
+    Couleur: '#0a6ed1'
   });
+
+  const PRESETS = [
+    { label: 'Livret A (22 950 €)', libelle: 'Livret A', type: 'Livret A', placement: 'Epargne', plafond: 22950, taux: 3.0, couleur: '#107e3e' },
+    { label: 'LDDS (12 000 €)', libelle: 'LDDS', type: 'LDDS', placement: 'Epargne', plafond: 12000, taux: 3.0, couleur: '#28a745' },
+    { label: 'LEP (10 000 €)', libelle: 'LEP', type: 'LEP', placement: 'Epargne', plafond: 10000, taux: 4.0, couleur: '#20c997' },
+    { label: 'PEA (150 000 €)', libelle: 'PEA ETF & Actions', type: 'PEA', placement: 'Actions', plafond: 150000, taux: 6.0, couleur: '#e9730c' },
+    { label: 'Compte Courant', libelle: 'Compte Courant', type: 'Compte Courant', placement: 'Courant', plafond: '', taux: 0, couleur: '#0a6ed1' }
+  ];
+
+  function applyPreset(p) {
+    accountForm.Libelle = p.libelle;
+    accountForm.Type = p.type;
+    accountForm.TypePlacement = p.placement;
+    accountForm.Plafond = p.plafond !== '' ? p.plafond : '';
+    accountForm.TauxActuel = p.taux;
+    accountForm.Couleur = p.couleur;
+  }
+
+  let revealedIbans = $state({});
+
+  function toggleRevealIban(id) {
+    revealedIbans[id] = !revealedIbans[id];
+  }
+
+  function formatIban(iban, isRevealed = false) {
+    if (!iban) return '-';
+    if (isRevealed) return iban;
+    const clean = iban.replace(/\s+/g, '');
+    if (clean.length <= 8) return iban;
+    return `${clean.slice(0, 4)} •••• •••• •••• ${clean.slice(-4)}`;
+  }
 
   // Validation States
   let libelleError = $derived(
@@ -81,12 +115,22 @@
     } else if (lowerVal.includes('livret') || lowerVal.includes('ldds') || lowerVal.includes('lep') || lowerVal.includes('épargne') || lowerVal.includes('cel') || lowerVal.includes('pel')) {
       accountForm.TypePlacement = 'Epargne';
       if (accountForm.TauxActuel === 0) {
-        accountForm.TauxActuel = 3.0; // standard livret rate
+        accountForm.TauxActuel = 3.0;
+      }
+      if (lowerVal.includes('livret a') && !accountForm.Plafond) {
+        accountForm.Plafond = 22950;
+      } else if (lowerVal.includes('ldds') && !accountForm.Plafond) {
+        accountForm.Plafond = 12000;
+      } else if (lowerVal.includes('lep') && !accountForm.Plafond) {
+        accountForm.Plafond = 10000;
       }
     } else if (lowerVal.includes('pea') || lowerVal.includes('titre') || lowerVal.includes('actions') || lowerVal.includes('etf') || lowerVal.includes('bourse') || lowerVal.includes('placement') || lowerVal.includes('amundi')) {
       accountForm.TypePlacement = 'Actions';
       if (accountForm.TauxActuel === 0) {
-        accountForm.TauxActuel = 5.0; // default stock performance estimation
+        accountForm.TauxActuel = 5.0;
+      }
+      if (lowerVal.includes('pea') && !accountForm.Plafond) {
+        accountForm.Plafond = 150000;
       }
     } else if (lowerVal.includes('pee') || lowerVal.includes('peg') || lowerVal.includes('bloqué') || lowerVal.includes('bloque') || lowerVal.includes('salariale') || lowerVal.includes('retraite') || lowerVal.includes('per')) {
       accountForm.TypePlacement = 'Verrouille';
@@ -100,12 +144,15 @@
     accountForm = {
       ID: '',
       Libelle: '',
-      Type: 'Courant',
+      Type: 'Compte Courant',
       SoldeActuel: 0,
       TypePlacement: 'Courant',
       DateMaturite: '',
       TauxActuel: 0,
-      IBAN: ''
+      IBAN: '',
+      Plafond: '',
+      Etablissement: '',
+      Couleur: '#0a6ed1'
     };
     isEditingAccount = false;
     isAccountDialogOpen = true;
@@ -127,7 +174,10 @@
       TypePlacement: acc.TypePlacement || 'Courant',
       DateMaturite: acc.DateMaturite || '',
       TauxActuel: acc.TauxActuel || 0,
-      IBAN: acc.IBAN || ''
+      IBAN: acc.IBAN || '',
+      Plafond: acc.Plafond || '',
+      Etablissement: acc.Etablissement || '',
+      Couleur: acc.Couleur || '#0a6ed1'
     };
     isEditingAccount = true;
     isAccountDialogOpen = true;
@@ -146,7 +196,6 @@
       return;
     }
 
-    // Close the dialog immediately (optimistic UI)
     isAccountDialogOpen = false;
     if (accountDialogRef) {
       try {
@@ -170,7 +219,10 @@
         TypePlacement: accountForm.TypePlacement || 'Courant',
         DateMaturite: accountForm.DateMaturite ? accountForm.DateMaturite : null,
         TauxActuel: parseFloat(accountForm.TauxActuel || 0),
-        IBAN: accountForm.IBAN || null
+        IBAN: accountForm.IBAN || null,
+        Plafond: accountForm.Plafond ? parseFloat(accountForm.Plafond) : null,
+        Etablissement: accountForm.Etablissement || null,
+        Couleur: accountForm.Couleur || null
       };
 
       if (isEditingAccount) {
@@ -229,9 +281,14 @@
   }
 </script>
 
-<div class="page-title-container">
+<div class="page-title-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
   <h1 class="page-title">{i18n.t('acc.manageTitle')}</h1>
-  <ui5-button icon="add" design="Emphasized" onclick={openAddAccount}>{i18n.currentLang === 'fr' ? 'Nouveau Compte' : 'New Account'}</ui5-button>
+  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <ui5-button icon="synchronize" design="Transparent" title="Recalculer les soldes à partir du grand livre" onclick={() => appState.recomputeBalances()}>{i18n.t('acc.btnReconcile')}</ui5-button>
+    <ui5-button icon="refresh" design="Transparent" title="Restaurer les 7 comptes de démonstration avec graphe et règles" onclick={() => appState.resetDemoData()}>{i18n.t('acc.btnDemo')}</ui5-button>
+    <ui5-button icon="delete" design="Transparent" style="color: var(--sap-error-color);" title="Vider la base de données (mode vierge sans données)" onclick={() => { if (confirm(i18n.t('acc.btnClearConfirm'))) appState.clearAllData(); }}>{i18n.t('acc.btnClear')}</ui5-button>
+    <ui5-button icon="add" design="Emphasized" onclick={openAddAccount}>{i18n.currentLang === 'fr' ? 'Nouveau Compte' : 'New Account'}</ui5-button>
+  </div>
 </div>
 
 <!-- Accounts Quick Stats Header -->
@@ -270,10 +327,10 @@
     <table class="sap-table">
       <thead>
         <tr>
-          <th>Libellé</th>
+          <th>Libellé & Établissement</th>
           <th>{i18n.currentLang === 'fr' ? 'Type de Compte' : 'Account Type'}</th>
           <th class="hide-on-mobile">IBAN</th>
-          <th style="text-align: right; width: 220px;">{i18n.currentLang === 'fr' ? 'Solde Actuel' : 'Current Balance'}</th>
+          <th style="text-align: right; width: 240px;">{i18n.currentLang === 'fr' ? 'Solde Actuel & Plafond' : 'Current Balance & Ceiling'}</th>
           <th class="hide-on-mobile">{i18n.currentLang === 'fr' ? 'Devise' : 'Currency'}</th>
           <th style="text-align: right; width: 100px;">Actions</th>
         </tr>
@@ -282,23 +339,50 @@
         {#each appState.accounts as acc}
           <tr>
             <td style="font-weight: 600;">
-              {acc.Libelle}
+              <div style="display: flex; align-items: center; gap: 6px;">
+                {#if acc.Couleur}
+                  <span style="width: 10px; height: 10px; border-radius: 50%; background-color: {acc.Couleur}; display: inline-block; flex-shrink: 0;"></span>
+                {/if}
+                <span>{acc.Libelle}</span>
+              </div>
+              {#if acc.Etablissement}
+                <div style="font-weight: normal; font-size: 11px; color: var(--sap-text-muted-color); margin-top: 2px;">
+                  🏛️ {acc.Etablissement}
+                </div>
+              {/if}
               {#if acc.TypePlacement === 'Epargne'}
-                <div style="font-weight: normal; font-size: 11px; color: var(--sap-information-color); margin-top: 4px;">
-                  Taux actuel: {acc.TauxActuel}%
+                <div style="font-weight: normal; font-size: 11px; color: var(--sap-information-color); margin-top: 2px;">
+                  Taux annuel: {acc.TauxActuel}%
                 </div>
               {:else if acc.TypePlacement === 'Actions'}
-                <div style="font-weight: normal; font-size: 11px; color: var(--sap-critical-color); margin-top: 4px;">
-                  Taux performance: {acc.TauxActuel}%
+                <div style="font-weight: normal; font-size: 11px; color: var(--sap-critical-color); margin-top: 2px;">
+                  Rendement estimé: {acc.TauxActuel}%
                 </div>
               {:else if acc.TypePlacement === 'Verrouille'}
-                <div style="font-weight: normal; font-size: 11px; color: var(--sap-error-color); margin-top: 4px;">
+                <div style="font-weight: normal; font-size: 11px; color: var(--sap-error-color); margin-top: 2px;">
                   Bloqué jusqu'au: {acc.DateMaturite || 'N/A'}
                 </div>
               {/if}
             </td>
             <td><span class="badge" style="background-color: var(--sap-background-color); color: var(--sap-text-color);">{acc.Type}</span></td>
-            <td class="hide-on-mobile" style="font-family: monospace; font-size: 12px; color: var(--sap-text-muted-color);">{acc.IBAN || '-'}</td>
+            <td class="hide-on-mobile" style="vertical-align: middle;">
+              {#if acc.IBAN}
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-family: monospace; font-size: 11px; color: var(--sap-text-muted-color);">
+                    {formatIban(acc.IBAN, revealedIbans[acc.ID])}
+                  </span>
+                  <ui5-button 
+                    icon={revealedIbans[acc.ID] ? "hide" : "show"} 
+                    design="Transparent" 
+                    style="width: 22px; height: 22px; min-width: 22px;" 
+                    title={revealedIbans[acc.ID] ? "Masquer l'IBAN (Sécurité RGPD)" : "Afficher l'IBAN complet"}
+                    onclick={() => toggleRevealIban(acc.ID)}>
+                  </ui5-button>
+                </div>
+              {:else}
+                <span style="color: var(--sap-text-muted-color); font-size: 12px;">-</span>
+              {/if}
+            </td>
             <td style="text-align: right; font-weight: bold; vertical-align: middle;">
               {#if editingSoldeId === acc.ID}
                 <div style="display: flex; justify-content: flex-end; align-items: center; gap: 4px;">
@@ -317,6 +401,17 @@
                     {appState.formatCurrency(acc.SoldeActuel)}
                   </span>
                   <ui5-button icon="edit" design="Transparent" title="Modifier le solde rapidement" style="height: 20px; width: 20px; min-width: 20px;" onclick={() => startInlineEditSolde(acc)}></ui5-button>
+                </div>
+              {/if}
+              {#if acc.Plafond && parseFloat(acc.Plafond) > 0}
+                {@const ratio = Math.round((parseFloat(acc.SoldeActuel || 0) / parseFloat(acc.Plafond)) * 100)}
+                <div style="margin-top: 4px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
+                  <div style="font-size: 11px; font-weight: normal; color: {ratio > 100 ? '#d9383a' : 'var(--sap-text-muted-color)'};">
+                    {ratio}% du plafond ({appState.formatCurrency(acc.Plafond)})
+                  </div>
+                  <div style="width: 130px; background: #e5e7eb; border-radius: 4px; height: 5px; overflow: hidden;">
+                    <div style="width: {Math.min(100, Math.max(0, ratio))}%; height: 100%; background: {ratio > 100 ? '#d9383a' : (ratio >= 85 ? '#e9730c' : '#107e3e')};"></div>
+                  </div>
                 </div>
               {/if}
             </td>
@@ -342,7 +437,18 @@
 
 <!-- ACCOUNTS DIALOG -->
 <ui5-dialog open={isAccountDialogOpen || undefined} bind:this={accountDialogRef} header-text={isEditingAccount ? "Modifier le Compte" : "Ajouter un Compte"}>
-  <div style="padding: 16px; width: 340px; display: flex; flex-direction: column; gap: 16px;">
+  <div style="padding: 16px; width: 360px; display: flex; flex-direction: column; gap: 14px;">
+    {#if !isEditingAccount}
+      <div class="form-group">
+        <label style="font-size: 12px; color: var(--sap-text-muted-color); margin-bottom: 4px; display: block;">Modèles rapides (France) :</label>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          {#each PRESETS as preset}
+            <ui5-button design="Transparent" style="height: 26px; font-size: 11px; padding: 0 8px;" onclick={() => applyPreset(preset)}>{preset.label}</ui5-button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     <div class="form-group">
       <label for="acc-libelle">Libellé du compte</label>
       <ui5-input 
@@ -355,9 +461,19 @@
         {/if}
       </ui5-input>
     </div>
+
+    <div class="form-group">
+      <label for="acc-etablissement">Établissement / Banque (optionnel)</label>
+      <ui5-input 
+        id="acc-etablissement" 
+        value={accountForm.Etablissement}
+        placeholder="Ex: Boursorama, SG, BNP, Bourse Direct..."
+        oninput={(e) => accountForm.Etablissement = e.target.value}>
+      </ui5-input>
+    </div>
     
     <div class="form-group">
-      <label for="acc-type">Type ou Catégorie de Compte</label>
+      <label for="acc-type">Type de Compte</label>
       <ui5-input 
         id="acc-type" 
         value={accountForm.Type} 
@@ -377,7 +493,7 @@
     </div>
 
     <div class="form-group">
-      <label for="acc-placement">Type de Placement (Catégorie Globale)</label>
+      <label for="acc-placement">Catégorie de Placement</label>
       <ui5-select id="acc-placement" value={accountForm.TypePlacement} onchange={(e) => accountForm.TypePlacement = e.target.value}>
         <ui5-option selected={accountForm.TypePlacement === 'Courant' ? true : undefined} value="Courant">Compte Courant / Transit</ui5-option>
         <ui5-option selected={accountForm.TypePlacement === 'Epargne' ? true : undefined} value="Epargne">Livret d'Épargne (Taux Fixe)</ui5-option>
@@ -397,6 +513,17 @@
         </ui5-input>
       </div>
     {/if}
+
+    <div class="form-group">
+      <label for="acc-plafond">Plafond Réglementaire ou d'Alerte (€, optionnel)</label>
+      <ui5-input 
+        id="acc-plafond" 
+        type="Number"
+        value={accountForm.Plafond}
+        placeholder="Ex: 22950 (Livret A), 12000 (LDDS)..."
+        oninput={(e) => accountForm.Plafond = e.target.value}>
+      </ui5-input>
+    </div>
 
     {#if accountForm.TypePlacement === 'Verrouille'}
       <div class="form-group">

@@ -58,6 +58,12 @@
       data-tab="abonnements">
     </ui5-side-navigation-item>
     <ui5-side-navigation-item 
+      text={i18n.t('nav.expenses')} 
+      icon="cart" 
+      selected={appState.activeTab === 'depenses'} 
+      data-tab="depenses">
+    </ui5-side-navigation-item>
+    <ui5-side-navigation-item 
       text={i18n.t('nav.calendar')} 
       icon="calendar" 
       selected={appState.activeTab === 'calendar'} 
