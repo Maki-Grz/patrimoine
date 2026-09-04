@@ -416,7 +416,8 @@
               {/if}
             </td>
             <td class="hide-on-mobile">{acc.Devise}</td>
-            <td style="text-align: right;">
+            <td style="text-align: right; white-space: nowrap;">
+              <ui5-button icon="line-chart" design="Transparent" title="{i18n.t('evolution.btnEvolution')}" onclick={() => appState.openBalanceHistory(acc)}></ui5-button>
               <ui5-button icon="edit" design="Transparent" onclick={() => openEditAccount(acc)}></ui5-button>
               <ui5-button icon="delete" design="Transparent" onclick={() => deleteAccount(acc.ID)}></ui5-button>
             </td>

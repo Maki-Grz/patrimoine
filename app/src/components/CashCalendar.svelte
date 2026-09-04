@@ -158,22 +158,34 @@
         let salaryReceived = (d === payDay) ? salaryNetImpact : 0;
         
         let dayRealExpenses = [];
+        let dayIncomes = [];
         if (selectedMonthOffset === 0) {
           dayRealExpenses = appState.transactions.filter(t => {
             if (t.Type !== 'Sortie' || t.Categorie === 'Logement' || t.Libelle?.toLowerCase().includes('loyer') || t.Type === 'Charge_Fixe' || t.AccountSource_ID !== acc.ID || !t.Date) return false;
             const tDate = new Date(t.Date);
             return tDate.getFullYear() === year && tDate.getMonth() === month && tDate.getDate() === d;
           });
+
+          // Non-salary incoming transfers (e.g. CAF, APL, refunds, bonuses)
+          dayIncomes = appState.transactions.filter(t => {
+            if (t.Type !== 'Entree' || t.AccountTarget_ID !== acc.ID || !t.Date) return false;
+            if (d === payDay && (t.Libelle?.toLowerCase().includes('salaire') || t.Categorie === 'Salaire' || t.Categorie === 'Revenu')) return false;
+            const tDate = new Date(t.Date);
+            return tDate.getFullYear() === year && tDate.getMonth() === month && tDate.getDate() === d;
+          });
         }
         let realExpensesSum = dayRealExpenses.reduce((sum, t) => sum + parseFloat(t.Montant || 0), 0);
+        let incomesSum = dayIncomes.reduce((sum, t) => sum + parseFloat(t.Montant || 0), 0);
 
-        currentBal = Math.round((currentBal + salaryReceived - debitsSum - realExpensesSum) * 100) / 100;
+        currentBal = Math.round((currentBal + salaryReceived + incomesSum - debitsSum - realExpensesSum) * 100) / 100;
         daysData[d] = {
           balance: currentBal,
           debits: dayDebits,
           debitsSum,
           realExpenses: dayRealExpenses,
           realExpensesSum,
+          incomes: dayIncomes,
+          incomesSum,
           salaryReceived
         };
       }
@@ -201,8 +213,16 @@
       });
       let realExpensesSum = dayRealExpenses.reduce((sum, t) => sum + parseFloat(t.Montant || 0), 0);
 
+      let dayIncomes = appState.transactions.filter(t => {
+        if (t.Type !== 'Entree' || t.AccountTarget_ID !== acc.ID || !t.Date) return false;
+        if (d === payDay && (t.Libelle?.toLowerCase().includes('salaire') || t.Categorie === 'Salaire' || t.Categorie === 'Revenu')) return false;
+        const tDate = new Date(t.Date);
+        return tDate.getFullYear() === curYear && tDate.getMonth() === curMonth && tDate.getDate() === d;
+      });
+      let incomesSum = dayIncomes.reduce((sum, t) => sum + parseFloat(t.Montant || 0), 0);
+
       let salaryReceived = (d === payDay) ? salaryNetImpact : 0;
-      tempBal = tempBal - salaryReceived + debitsSum + realExpensesSum;
+      tempBal = tempBal - salaryReceived - incomesSum + debitsSum + realExpensesSum;
     }
     
     const curMonthProj = projectMonth(tempBal, curYear, curMonth);
@@ -228,9 +248,14 @@
   });
 </script>
 
-<div class="page-title-container">
+<div class="page-title-container" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
   <h1 class="page-title">{i18n.t('cal.previsionalTitle')}</h1>
-  <ui5-button icon="refresh" design="Transparent" onclick={() => appState.loadData()} title="Actualiser les données"></ui5-button>
+  <div style="display: flex; gap: 8px; align-items: center;">
+    <ui5-button icon="add" design="Positive" onclick={() => appState.isIncomeDialogOpen = true}>
+      📥 {i18n.t('income.addBtn')}
+    </ui5-button>
+    <ui5-button icon="refresh" design="Transparent" onclick={() => appState.loadData()} title="Actualiser les données"></ui5-button>
+  </div>
 </div>
 
 <div class="calendar-layout" style="display: flex; flex-direction: column; gap: 16px;">
@@ -254,6 +279,12 @@
           <ui5-option selected={selectedMonthOffset === 0 ? true : undefined} value="0">Mois en cours ({getMonthName(0)})</ui5-option>
           <ui5-option selected={selectedMonthOffset === 1 ? true : undefined} value="1">Mois prochain ({getMonthName(1)})</ui5-option>
         </ui5-select>
+      </div>
+
+      <div style="display: flex; align-items: flex-end;">
+        <ui5-button design="Emphasized" icon="add" onclick={() => appState.isIncomeDialogOpen = true}>
+          📥 {i18n.t('income.btnSubmit')}
+        </ui5-button>
       </div>
     </div>
 
@@ -321,6 +352,9 @@
                   {#if dayData?.salaryReceived > 0}
                     <div style="width: 8px; height: 8px; background-color: var(--sap-success-color); border-radius: 50%;" title="{i18n.t('cal.salaryBadge')} : +{appState.formatCurrency(dayData.salaryReceived)}"></div>
                   {/if}
+                  {#if dayData?.incomesSum > 0}
+                    <div style="width: 8px; height: 8px; background-color: #107e3e; border-radius: 50%;" title="{dayData.incomes.length} {i18n.t('cal.incomeBadge')} : +{appState.formatCurrency(dayData.incomesSum)}"></div>
+                  {/if}
                   {#if dayData?.debitsSum > 0}
                     <div style="width: 8px; height: 8px; background-color: var(--sap-error-color); border-radius: 50%;" title="{dayData.debits.length} {i18n.t('cal.debitBadge')} : -{appState.formatCurrency(dayData.debitsSum)}"></div>
                   {/if}
@@ -336,6 +370,14 @@
                   <div style="font-size: 9px; color: var(--sap-success-color); font-weight: bold; background-color: rgba(16, 126, 62, 0.08); padding: 2px; border-radius: 3px;">
                     💰 {i18n.t('cal.salaryBadge')} (+{Math.round(dayData.salaryReceived)} €)
                   </div>
+                {/if}
+                {#if dayData?.incomes && dayData.incomes.length > 0}
+                  {#each dayData.incomes as inc}
+                    <div style="font-size: 9px; color: #107e3e; font-weight: bold; background-color: rgba(16, 126, 62, 0.12); padding: 2px 4px; border-radius: 3px; display: flex; justify-content: space-between;" title="{inc.Libelle} : +{appState.formatCurrency(inc.Montant)}">
+                      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60px;">📥 {inc.Libelle}</span>
+                      <span>+{Math.round(inc.Montant)} €</span>
+                    </div>
+                  {/each}
                 {/if}
                 {#if dayData?.debits && dayData.debits.length > 0}
                   {#each dayData.debits as deb}

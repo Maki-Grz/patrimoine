@@ -125,3 +125,13 @@ entity FlowConnections : cuid, managed {
     TypeRegle  : RuleType not null;                // 'PERCENT' ou 'FIXED'
     Valeur     : Decimal(15, 2) not null;
 }
+
+// Suivi de l'évolution et historique des soldes de comptes (ex: valorisation PEG Amundi, Livret, etc.)
+entity BalanceHistory : cuid, managed {
+    Account      : Association to Accounts;
+    Date         : DateTime default $now;
+    AncienSolde  : Decimal(15, 2);
+    NouveauSolde : Decimal(15, 2);
+    Delta        : Decimal(15, 2);
+    Motif        : String(255);
+}

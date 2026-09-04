@@ -35,6 +35,9 @@
   import RecurringDebits from './components/RecurringDebits.svelte';
   import Expenses from './components/Expenses.svelte';
   import ExecutionLogs from './components/ExecutionLogs.svelte';
+  import IncomeDialog from './components/IncomeDialog.svelte';
+  import ExpenseDialog from './components/ExpenseDialog.svelte';
+  import BalanceHistoryDialog from './components/BalanceHistoryDialog.svelte';
 
   onMount(() => {
     appState.loadData();
@@ -72,6 +75,11 @@
     </main>
   </div>
 </div>
+
+<!-- Global Dialogs -->
+<IncomeDialog />
+<ExpenseDialog />
+<BalanceHistoryDialog />
 
 <!-- Global Toast Alert -->
 <ui5-toast bind:this={appState.toastRef} duration="3000">

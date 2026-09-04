@@ -1,3 +1,4 @@
+process.env.CDS_REQUIRES_DB_CREDENTIALS_URL = "test.sqlite";
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const cds = require("@sap/cds");
@@ -6,7 +7,8 @@ test("Patrimoine CAP Service & Business Logic Tests", async (t) => {
 	let srv;
 
 	await t.test("Bootstrap CDS and serve PatrimoineService", async () => {
-		await cds.connect.to("db");
+		const db = await cds.connect.to("db");
+		await cds.deploy("srv").to(db);
 		srv = await cds.serve("PatrimoineService").from("srv");
 		assert.ok(srv, "PatrimoineService loaded successfully");
 	});
@@ -58,8 +60,8 @@ test("Patrimoine CAP Service & Business Logic Tests", async (t) => {
 			SELECT.one.from(srv.entities.Accounts).where({ ID: "acc00003-0000-4000-a000-000000000003" }),
 		);
 
-		assert.strictEqual(srcAfter.SoldeActuel, srcBefore.SoldeActuel - 100, "Source should be debited by 100");
-		assert.strictEqual(tgtAfter.SoldeActuel, tgtBefore.SoldeActuel + 100, "Target should be credited by 100");
+		assert.strictEqual(parseFloat(srcAfter.SoldeActuel), parseFloat(srcBefore.SoldeActuel) - 100, "Source should be debited by 100");
+		assert.strictEqual(parseFloat(tgtAfter.SoldeActuel), parseFloat(tgtBefore.SoldeActuel) + 100, "Target should be credited by 100");
 
 		// Test deletion reverts balances
 		await srv.delete("Transactions").where({ ID: txId });
@@ -70,8 +72,8 @@ test("Patrimoine CAP Service & Business Logic Tests", async (t) => {
 			SELECT.one.from(srv.entities.Accounts).where({ ID: "acc00003-0000-4000-a000-000000000003" }),
 		);
 
-		assert.strictEqual(srcRestored.SoldeActuel, srcBefore.SoldeActuel, "Source balance must be restored");
-		assert.strictEqual(tgtRestored.SoldeActuel, tgtBefore.SoldeActuel, "Target balance must be restored");
+		assert.strictEqual(parseFloat(srcRestored.SoldeActuel), parseFloat(srcBefore.SoldeActuel), "Source balance must be restored");
+		assert.strictEqual(parseFloat(tgtRestored.SoldeActuel), parseFloat(tgtBefore.SoldeActuel), "Target balance must be restored");
 	});
 
 	await t.test("FlowNodes cascade delete removes associated connections", async () => {

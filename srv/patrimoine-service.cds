@@ -12,6 +12,7 @@ service PatrimoineService {
     entity FlowNodes as projection on my.FlowNodes;
     entity FlowConnections as projection on my.FlowConnections;
     entity PendingTransactions as projection on my.PendingTransactions;
+    entity BalanceHistory as projection on my.BalanceHistory;
 
 
     action processSalarySplit(salaryAmount: Decimal(15,2), deductLivingBudget: Boolean) returns ExecutionLogs;

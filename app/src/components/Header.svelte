@@ -33,15 +33,6 @@
     </div>
   </div>
   <div class="header-right">
-    <ui5-button
-      design="Emphasized"
-      icon="add"
-      style="height: 32px; margin-right: 10px;"
-      onclick={() => appState.activeTab = 'depenses'}
-    >
-      {i18n.t('expenses.newBtn')}
-    </ui5-button>
-
     <button 
       class="env-badge" 
       onclick={openProfile} 

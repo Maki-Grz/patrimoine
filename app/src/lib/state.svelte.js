@@ -30,6 +30,12 @@ class AppState {
   // Budget & Everyday Expenses states
   budgetSummary = $state(null);
   isExpenseDialogOpen = $state(false);
+  isIncomeDialogOpen = $state(false);
+
+  // Balance History & Evolution states
+  balanceHistory = $state([]);
+  isBalanceHistoryDialogOpen = $state(false);
+  selectedHistoryAccount = $state(null);
 
   // User Profile & BTP Integration states
   userProfile = $state(null);
@@ -116,6 +122,7 @@ class AppState {
         { key: 'flowConnections', url: '/odata/v4/patrimoine/FlowConnections', handler: (data) => { this.flowConnections = data.value || []; } },
         { key: 'interestRateHistory', url: '/odata/v4/patrimoine/InterestRateHistory', handler: (data) => { this.interestRateHistory = data.value || []; } },
         { key: 'stockFluctuations', url: '/odata/v4/patrimoine/StockFluctuations', handler: (data) => { this.stockFluctuations = data.value || []; } },
+        { key: 'balanceHistory', url: '/odata/v4/patrimoine/BalanceHistory?$expand=Account&$orderby=Date desc', handler: (data) => { this.balanceHistory = data.value || []; } },
         { key: 'pendingTransactions', url: '/odata/v4/patrimoine/PendingTransactions?$expand=AccountSource,AccountTarget', handler: (data) => {
             const rawPending = data.value || [];
             this.pendingTransactions = rawPending.map(item => ({ ...item, checked: true }));
@@ -247,6 +254,99 @@ class AppState {
       }
     } catch (e) {
       this.showToast("Erreur réseau lors de la création de la dépense.");
+      return false;
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  /**
+   * Records an incoming financial transaction (CAF, reimbursement, bonus, etc.).
+   * @param {object} param0 - Income data.
+   */
+  async createIncome({ montant, libelle, categorie, accountTargetId, date }) {
+    this.loading = true;
+    try {
+      const amount = parseFloat(montant);
+      if (isNaN(amount) || amount <= 0) {
+        this.showToast("Le montant doit être supérieur à 0.");
+        return false;
+      }
+      if (!libelle || !libelle.trim()) {
+        this.showToast("Le libellé de l'entrée d'argent est obligatoire.");
+        return false;
+      }
+      if (!accountTargetId) {
+        this.showToast("Veuillez sélectionner un compte récepteur.");
+        return false;
+      }
+
+      const payload = {
+        Date: date ? `${date}T${new Date().toISOString().slice(11, 19)}Z` : new Date().toISOString(),
+        Libelle: libelle.trim(),
+        Montant: amount,
+        Type: "Entree",
+        AccountSource_ID: null,
+        AccountTarget_ID: accountTargetId,
+        Categorie: categorie || "CAF / Aides",
+        Statut: "Execute"
+      };
+
+      const res = await fetch('/odata/v4/patrimoine/Transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        this.showToast(`Entrée d'argent de ${this.formatCurrency(amount)} enregistrée avec succès.`);
+        await this.loadData();
+        return true;
+      } else {
+        const err = await res.json().catch(() => ({}));
+        this.showToast(err.error?.message || "Impossible d'enregistrer l'entrée d'argent.");
+        return false;
+      }
+    } catch (err) {
+      this.showToast("Erreur de connexion.");
+      return false;
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  /**
+   * Opens the Balance History & Evolution modal for an account.
+   */
+  openBalanceHistory(account) {
+    this.selectedHistoryAccount = account;
+    this.isBalanceHistoryDialogOpen = true;
+  }
+
+  /**
+   * Updates an account valuation and records an evolution point.
+   */
+  async updateAccountValuation(accountId, newSolde, motif) {
+    this.loading = true;
+    try {
+      const res = await fetch(`/odata/v4/patrimoine/Accounts(${accountId})`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          SoldeActuel: parseFloat(newSolde),
+          MotifAjustement: motif || "Actualisation de la valorisation"
+        })
+      });
+      if (res.ok) {
+        this.showToast("Valorisation mise à jour et enregistrée dans l'historique.");
+        await this.loadData();
+        return true;
+      } else {
+        this.showToast("Erreur lors de la mise à jour de la valorisation.");
+        return false;
+      }
+    } catch (e) {
+      this.showToast("Erreur réseau.");
       return false;
     } finally {
       this.loading = false;
