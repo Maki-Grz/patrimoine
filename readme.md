@@ -4,14 +4,15 @@
 
 ---
 
-[![Project Status: Beta](https://img.shields.io/badge/status-beta-blue.svg?style=flat-flat&logo=github)](https://github.com/Maki-Grz/patrimoine)
+[![Release: v1.0.0](https://img.shields.io/badge/release-v1.0.0-blue.svg?style=flat-flat&logo=github)](https://github.com/Maki-Grz/patrimoine/releases)
+[![Project Status: Production / Stable](https://img.shields.io/badge/status-stable-success.svg?style=flat-flat)](https://github.com/Maki-Grz/patrimoine)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Built with SAP CAP](https://img.shields.io/badge/SAP-CAP%20Node.js-blue?logo=sap)](https://cap.cloud.sap)
 [![Svelte](https://img.shields.io/badge/Frontend-Svelte_5-ff3e00?logo=svelte)](https://svelte.dev)
 
-> [!IMPORTANT]
-> **BETA RELEASE STATUS (v0.1.0-beta.1)**
-> This repository is now in **Beta** release phase. Core features (multi-account management, DAG flow graphs, living budget tracking, previsional cash calendar, bilingual i18n FR/EN, and GDPR-by-design compliance) are fully implemented and covered by automated test suites. Community testing and feedback are warmly welcomed.
+> [!NOTE]
+> **OFFICIAL PRODUCTION RELEASE (v1.0.0 - General Availability)**
+> Patrimoine has officially graduated from beta into **v1.0.0 (General Availability)**. The platform is production-ready for personal wealth management, financial DAG flow allocations, living budget optimization, previsional cash calendar, French sovereign asset tracking, and full enterprise SAP BTP Cloud deployment. Consult the [CHANGELOG.md](CHANGELOG.md) for detailed release notes.
 
 ---
 
@@ -102,6 +103,147 @@ The backend service implementation (`srv/patrimoine-service.js`) logs and valida
    npm run dev
    ```
    *This launches Vite for the Svelte 5 application (typically at `http://localhost:5173`).*
+
+---
+
+## Déploiement sur SAP BTP (Business Technology Platform)
+
+**Patrimoine** est conçu nativement pour être déployé en tant que Multi-Target Application (MTA) sur **SAP Business Technology Platform (BTP)** dans l'environnement Cloud Foundry.
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                    Patrimoine on SAP BTP                    │
+│                                                             │
+│  [ Utilisateur / Navigateur ]                               │
+│                │                                            │
+│                ▼                                            │
+│     ┌─────────────────────┐       ┌──────────────────────┐  │
+│     │     Approuter       │──────▶│ HTML5 App Repository │  │
+│     │ patrimoine-approuter│       │ (Frontend Svelte 5)  │  │
+│     └──────────┬──────────┘       └──────────────────────┘  │
+│                │                                            │
+│        ┌───────┴───────┐                                    │
+│        ▼               ▼                                    │
+│  ┌──────────┐   ┌──────────────┐                            │
+│  │  XSUAA   │   │  CAP Service │ (OData v4 / NodeJS)        │
+│  │ (Auth)   │   │patrimoine-srv│                            │
+│  └──────────┘   └──────┬───────┘                            │
+│                        │                                    │
+│                        ▼                                    │
+│                 ┌──────────────┐                            │
+│                 │  HANA Cloud  │ (HDI Shared Container)     │
+│                 │patrimoine-db │                            │
+│                 └──────────────┘                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 1. Prérequis & Outillage
+
+Assurez-vous de disposer des prérequis et outils CLI suivants :
+
+1. **Cloud Foundry CLI (`cf`)** (v8 ou supérieure) :
+   ```bash
+   cf version
+   ```
+2. **Plugin Cloud Foundry MTA (`multiapps`)** :
+   ```bash
+   cf install-plugin multiapps
+   ```
+3. **Cloud MTA Build Tool (`mbt`)** :
+   ```bash
+   npm install -g mbt
+   ```
+4. **SAP CDS Development Kit (`@sap/cds-dk`)** :
+   ```bash
+   npm install -g @sap/cds-dk
+   ```
+5. **Sous-compte SAP BTP actif** :
+   - Environnement **Cloud Foundry** activé avec une organisation et un espace (*space*, ex: `production` ou `dev`).
+   - Quotas et droits (*entitlements*) alloués au sous-compte :
+     - **SAP HANA Cloud** : service `hana`, plan `hdi-shared`.
+     - **Authorization & Trust Management** : service `xsuaa`, plan `application`.
+     - **SAP HTML5 Application Repository** : service `html5-apps-repo`, plans `app-host` et `app-runtime`.
+
+---
+
+### 2. Étape 1 : Construction de l'application & de l'archive MTA (`.mtar`)
+
+Depuis la racine du projet, compilez le frontend Svelte 5 ainsi que les artefacts backend, puis générez l'archive de déploiement MTA :
+
+```bash
+# 1. Compilation du frontend Svelte 5
+npm run build:frontend
+
+# 2. Compilation des modèles CDS pour Node.js / SAP HANA
+npm run build:backend
+
+# 3. Génération du package MTA (.mtar)
+mbt build
+```
+
+> [!TIP]
+> L'archive prête pour le déploiement est générée sous `mta_archives/patrimoine_1.0.0.mtar`.
+
+---
+
+### 3. Étape 2 : Connexion à l'environnement SAP BTP Cloud Foundry
+
+Authentifiez-vous auprès de votre région SAP BTP et ciblez votre espace :
+
+```bash
+# Se connecter à l'endpoint API Cloud Foundry de votre région (ex: Francfort cf-eu10)
+cf login -a https://api.cf.eu10-004.hana.ondemand.com
+
+# Définir l'organisation et l'espace cible
+cf target -o <votre-organisation> -s <votre-espace>
+```
+
+---
+
+### 4. Étape 3 : Déploiement de l'archive MTA
+
+Lancez le déploiement de l'application complète :
+
+```bash
+cf deploy mta_archives/patrimoine_1.0.0.mtar
+```
+
+Cette opération orchestrée par le service MTA Cloud Foundry exécute automatiquement :
+1. **Création / Mise à jour des services managés** (`patrimoine-db`, `patrimoine-uaa`, `patrimoine-html5-host`, `patrimoine-html5-runtime`).
+2. **Déploiement du schéma de base de données** (`patrimoine-db-deployer`) : instancie les tables, vues CDS et conteneur HDI sur SAP HANA Cloud.
+3. **Publication du Frontend** (`patrimoine-html5-deployer`) : téléverse le bundle Svelte 5 compilé dans le HTML5 Application Repository.
+4. **Démarrage du service backend** (`patrimoine-srv`) : démarre l'application Node.js fournissant les API OData v4 sécurisées.
+5. **Démarrage de l'Approuter** (`patrimoine-approuter`) : route unifiée publique avec authentification XSUAA.
+
+---
+
+### 5. Étape 4 : Déploiement manuel direct sur SAP HANA (Optionnel)
+
+Si vous développez et souhaitez déployer directement vos entités CDS sur une instance SAP HANA Cloud liée sans reconstruire l'archive MTA :
+
+```bash
+cds deploy --to hana
+```
+
+---
+
+### 6. Étape 5 : Attribution des Rôles & Accès à l'Application
+
+1. Accédez au **Cockpit SAP BTP** de votre sous-compte.
+2. Naviguez dans **Security** > **Users** (ou **Role Collections**).
+3. Attribuez la collection de rôles de l'application Patrimoine à votre utilisateur.
+4. Récupérez l'URL publique de l'Approuter avec la commande :
+   ```bash
+   cf apps
+   ```
+5. Ouvrez l'URL de `patrimoine-approuter` dans votre navigateur.
+6. Le point de terminaison de contrôle d'état et disponibilité est disponible sur `/health`.
+
+---
+
+## Patch Notes & Historique
+
+Consultez le fichier [CHANGELOG.md](CHANGELOG.md) pour retrouver le journal complet des modifications, ajouts et notes de version depuis l'initialisation du projet.
 
 ---
 

@@ -76,6 +76,36 @@ test("Patrimoine CAP Service & Business Logic Tests", async (t) => {
 		assert.strictEqual(parseFloat(tgtRestored.SoldeActuel), parseFloat(tgtBefore.SoldeActuel), "Target balance must be restored");
 	});
 
+	await t.test("Account balance update with MotifAjustement records BalanceHistory and ExecutionLogs", async () => {
+		const accId = "acc00001-0000-4000-a000-000000000001";
+		const beforeAcc = await srv.run(SELECT.one.from(srv.entities.Accounts).where({ ID: accId }));
+		const oldSolde = parseFloat(beforeAcc.SoldeActuel);
+		const newSolde = oldSolde + 250;
+
+		await srv.patch("Accounts", accId).with({
+			SoldeActuel: newSolde,
+			MotifAjustement: "Actualisation manuelle PEA/Assurance",
+		});
+
+		const afterAcc = await srv.run(SELECT.one.from(srv.entities.Accounts).where({ ID: accId }));
+		assert.strictEqual(parseFloat(afterAcc.SoldeActuel), newSolde, "Account balance must be updated");
+
+		const historyEntries = await srv.run(
+			SELECT.from(srv.entities.BalanceHistory).where({ Account_ID: accId }),
+		);
+		assert.ok(historyEntries.length > 0, "BalanceHistory entry should exist");
+		const latestHistory = historyEntries[historyEntries.length - 1];
+		assert.strictEqual(parseFloat(latestHistory.AncienSolde), oldSolde);
+		assert.strictEqual(parseFloat(latestHistory.NouveauSolde), newSolde);
+		assert.strictEqual(latestHistory.Motif, "Actualisation manuelle PEA/Assurance");
+
+		// Restore original solde
+		await srv.patch("Accounts", accId).with({
+			SoldeActuel: oldSolde,
+			MotifAjustement: "Restauration solde",
+		});
+	});
+
 	await t.test("FlowNodes cascade delete removes associated connections", async () => {
 		const nodeId = cds.utils.uuid();
 		await srv.create("FlowNodes").entries({

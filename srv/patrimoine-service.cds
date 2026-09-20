@@ -1,7 +1,11 @@
 using patrimonio as my from '../db/schema';
 
 service PatrimoineService {
-    entity Accounts as projection on my.Accounts;
+    entity Accounts as projection on my.Accounts {
+        *,
+        @Core.Computed: false
+        virtual MotifAjustement : String(255)
+    };
     entity SalaryConfig as projection on my.SalaryConfig;
     entity AllocationRules as projection on my.AllocationRules;
     entity Transactions as projection on my.Transactions;

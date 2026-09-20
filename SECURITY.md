@@ -6,12 +6,12 @@ We take the security and privacy of your personal financial data very seriously.
 
 ## Supported Versions
 
-Currently, the project is in **Beta**. We actively support and patch the latest pre-release version. 
+Patrimoine has graduated from beta into **General Availability (GA)**. We actively support and maintain the latest stable releases. 
 
 | Version | Supported |
 | ------- | --------- |
-| `0.1.0-beta.x` | Yes (Active development) |
-| `< 0.1.0-alpha.x` | No (Superseded by Beta) |
+| `1.0.x` | Yes (Active GA Release) |
+| `< 1.0.0` | No (Pre-release / Beta versions superseded) |
 
 ---
 

@@ -1,7 +1,7 @@
 {
   "name": "patrimoine-ui",
   "private": true,
-  "version": "0.1.0-beta.1",
+  "version": "1.0.0",
   "type": "module",
   "description": "Frontend UI component for the Patrimoine project, built with Svelte 5 and SAP UI5 Web Components.",
   "license": "Apache-2.0",

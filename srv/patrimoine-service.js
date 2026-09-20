@@ -257,6 +257,10 @@ module.exports = cds.service.impl(async function () {
 	 * to track wealth evolution (e.g. PEG Castor Amundi valorisation, savings growth).
 	 */
 	this.before("UPDATE", "Accounts", async (req) => {
+		const customMotif = req.data?.MotifAjustement;
+		if (req.data && "MotifAjustement" in req.data) {
+			delete req.data.MotifAjustement;
+		}
 		const newSolde = req.data?.SoldeActuel;
 		if (newSolde !== undefined && newSolde !== null) {
 			const id = req.data?.ID || req.params?.[0]?.ID || req.params?.[0];
@@ -269,7 +273,7 @@ module.exports = cds.service.impl(async function () {
 						const delta = Math.round((newVal - oldVal) * 100) / 100;
 						const isPos = delta > 0;
 						const pct = oldVal > 0 ? ((delta / oldVal) * 100).toFixed(2) : "0.00";
-						const motif = req.data.MotifAjustement || `Actualisation du solde (${isPos ? '+' : ''}${delta.toFixed(2)} € / ${isPos ? '+' : ''}${pct}%)`;
+						const motif = customMotif || `Actualisation du solde (${isPos ? '+' : ''}${delta.toFixed(2)} € / ${isPos ? '+' : ''}${pct}%)`;
 
 						await INSERT.into("patrimonio.BalanceHistory").entries({
 							ID: cds.utils.uuid(),
