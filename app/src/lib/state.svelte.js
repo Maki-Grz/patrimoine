@@ -159,6 +159,8 @@ class AppState {
 
   /**
    * Loads monthly budget summary from CAP function getMonthlyBudgetSummary.
+   * @async
+   * @returns {Promise<void>}
    */
   async loadBudgetSummary() {
     try {
@@ -174,6 +176,8 @@ class AppState {
 
   /**
    * Loads user profile and SAP BTP authentication metadata.
+   * @async
+   * @returns {Promise<void>}
    */
   async loadUserProfile() {
     try {
@@ -192,6 +196,9 @@ class AppState {
 
   /**
    * Updates user profile financial preferences in backend.
+   * @async
+   * @param {Object} preferences - User profile preferences object.
+   * @returns {Promise<boolean>} True if update succeeded, false otherwise.
    */
   async updateUserProfile(preferences) {
     this.loading = true;
@@ -221,6 +228,14 @@ class AppState {
 
   /**
    * Quick expense creator for daily debits (courses, restaurants, etc.).
+   * @async
+   * @param {Object} expenseData - Expense attributes.
+   * @param {number|string} expenseData.montant - Amount spent.
+   * @param {string} expenseData.libelle - Description label.
+   * @param {string} [expenseData.categorie] - Spending category.
+   * @param {string} [expenseData.accountId] - Debited account ID.
+   * @param {string} [expenseData.date] - Optional ISO date string.
+   * @returns {Promise<boolean>} True if expense was recorded, false otherwise.
    */
   async createExpense({ montant, libelle, categorie, accountId, date }) {
     this.loading = true;
@@ -317,6 +332,8 @@ class AppState {
 
   /**
    * Opens the Balance History & Evolution modal for an account.
+   * @param {Object} account - Target account object.
+   * @returns {void}
    */
   openBalanceHistory(account) {
     this.selectedHistoryAccount = account;
@@ -325,6 +342,11 @@ class AppState {
 
   /**
    * Updates an account valuation and records an evolution point.
+   * @async
+   * @param {string} accountId - The target account ID.
+   * @param {number|string} newSolde - The updated balance value.
+   * @param {string} [motif] - Optional reason/comment for the balance adjustment.
+   * @returns {Promise<boolean>} True if valuation update succeeded, false otherwise.
    */
   async updateAccountValuation(accountId, newSolde, motif) {
     this.loading = true;
@@ -355,6 +377,8 @@ class AppState {
 
   /**
    * Resets database state to default French wealth demo accounts.
+   * @async
+   * @returns {Promise<void>}
    */
   async resetDemoData() {
     this.loading = true;
@@ -379,6 +403,8 @@ class AppState {
 
   /**
    * Wipes all database tables to start with an empty database (zero data).
+   * @async
+   * @returns {Promise<void>}
    */
   async clearAllData() {
     this.loading = true;
@@ -403,6 +429,8 @@ class AppState {
 
   /**
    * Reconciles and recomputes all account balances from transaction ledger.
+   * @async
+   * @returns {Promise<void>}
    */
   async recomputeBalances() {
     this.loading = true;
@@ -428,6 +456,8 @@ class AppState {
 
   /**
    * RGPD Article 20: Exports all user data as a downloadable JSON file.
+   * @async
+   * @returns {Promise<void>}
    */
   async exportUserData() {
     this.loading = true;

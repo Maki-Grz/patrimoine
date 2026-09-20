@@ -1,3 +1,12 @@
+/**
+ * @fileoverview End-to-end integration and business logic tests for PatrimoineService.
+ * Executes on isolated SQLite test database ('test.sqlite') using native Node.js test runner.
+ * Tests cover transaction balance adjustments, salary split calculations, flow graph deletions,
+ * profile preferences, and GDPR data portability/erasure requirements.
+ * 
+ * @module test/patrimoine-service
+ */
+
 process.env.CDS_REQUIRES_DB_CREDENTIALS_URL = "test.sqlite";
 const test = require("node:test");
 const assert = require("node:assert/strict");

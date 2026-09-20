@@ -1,9 +1,18 @@
+/**
+ * @fileoverview Implementation of PatrimoineService in SAP CAP.
+ * Handles financial business logic, multi-account balance integrity,
+ * transaction validations, DAG flow calculations, salary distribution, and ceiling alerts.
+ * 
+ * @module patrimoine-service
+ */
+
 const cds = require("@sap/cds");
 
 /**
- * Implementation of PatrimoineService in SAP CAP.
- * Handles financial business logic, multi-account balance integrity,
- * transaction validations, DAG flow calculations, salary distribution, and ceiling alerts.
+ * Service implementation for PatrimoineService.
+ *
+ * @param {cds.Service} srv - The CDS service instance.
+ * @returns {Promise<void>}
  */
 module.exports = cds.service.impl(async function () {
 	const {
@@ -56,16 +65,19 @@ module.exports = cds.service.impl(async function () {
 			FROM patrimonio_BalanceHistory AS BalanceHistory_0;
 		`);
 	} catch (e) {
-		// Table/view already exists or handled by target dialect
+		// Table or view already exists or is managed by the target database dialect
 	}
 
 	// =========================================================================
-	// 1. VALIDATIONS ET GESTION D'INTÉGRITÉ DES TRANSACTIONS
+	// 1. TRANSACTION INTEGRITY AND VALIDATIONS
 	// =========================================================================
 
 	/**
-	 * Before CREATE Transactions:
-	 * Strictly validates amount, accounts, and sets defaults.
+	 * Before CREATE handler for Transactions.
+	 * Strictly validates amount, account references, and initializes defaults.
+	 *
+	 * @param {cds.Request} req - The CAP request object containing transaction data.
+	 * @returns {Promise<void>}
 	 */
 	this.before("CREATE", "Transactions", async (req) => {
 		const txs = Array.isArray(req.data) ? req.data : [req.data];
@@ -110,8 +122,12 @@ module.exports = cds.service.impl(async function () {
 	});
 
 	/**
-	 * After CREATE Transactions:
+	 * After CREATE handler for Transactions.
 	 * Automatically adjusts SoldeActuel of source and target accounts.
+	 *
+	 * @param {Object|Object[]} txData - The created transaction data.
+	 * @param {cds.Request} req - The original CAP request.
+	 * @returns {Promise<void>}
 	 */
 	this.after("CREATE", "Transactions", async (txData, req) => {
 		const raw = req?.data || txData;
@@ -123,7 +139,7 @@ module.exports = cds.service.impl(async function () {
 			const sourceId = transaction.AccountSource_ID || transaction.AccountSource?.ID;
 			const targetId = transaction.AccountTarget_ID || transaction.AccountTarget?.ID;
 
-			// Débit du compte source
+			// Debit source account
 			if (sourceId) {
 				const acc = await SELECT.one.from("patrimonio.Accounts").where({ ID: sourceId });
 				if (acc) {
@@ -132,7 +148,7 @@ module.exports = cds.service.impl(async function () {
 				}
 			}
 
-			// Crédit du compte cible
+			// Credit target account
 			if (targetId) {
 				const acc = await SELECT.one.from("patrimonio.Accounts").where({ ID: targetId });
 				if (acc) {
@@ -144,9 +160,12 @@ module.exports = cds.service.impl(async function () {
 	});
 
 	/**
-	 * Custom on DELETE Transactions:
+	 * Custom on DELETE handler for Transactions.
 	 * Restores account balances before transaction deletion to ensure mathematical consistency,
 	 * and directly deletes from the underlying table to ensure SQLite reliability.
+	 *
+	 * @param {cds.Request} req - The CAP request containing delete parameters.
+	 * @returns {Promise<any>}
 	 */
 	this.on("DELETE", "Transactions", async (req) => {
 		const id = req.data?.ID || req.params?.[0]?.ID || req.params?.[0];
@@ -203,8 +222,11 @@ module.exports = cds.service.impl(async function () {
 	});
 
 	/**
-	 * Before UPDATE Transactions:
-	 * Adjusts account balances based on the delta between old and new transaction values.
+	 * Before UPDATE handler for Transactions.
+	 * Adjusts account balances based on the delta between old and new transaction amounts and accounts.
+	 *
+	 * @param {cds.Request} req - The CAP request containing updated transaction fields.
+	 * @returns {Promise<void>}
 	 */
 	this.before("UPDATE", "Transactions", async (req) => {
 		const txId = req.data?.ID || req.params?.[0]?.ID || req.params?.[0];
@@ -218,7 +240,7 @@ module.exports = cds.service.impl(async function () {
 		const newSourceId = req.data.AccountSource_ID !== undefined ? req.data.AccountSource_ID : oldTx.AccountSource_ID;
 		const newTargetId = req.data.AccountTarget_ID !== undefined ? req.data.AccountTarget_ID : oldTx.AccountTarget_ID;
 
-		// 1. Reverser l'impact de l'ancienne transaction
+		// 1. Revert the impact of the previous transaction
 		if (oldTx.AccountSource_ID) {
 			const acc = await SELECT.one.from("patrimonio.Accounts").where({ ID: oldTx.AccountSource_ID });
 			if (acc) {
@@ -234,7 +256,7 @@ module.exports = cds.service.impl(async function () {
 			}
 		}
 
-		// 2. Appliquer l'impact de la nouvelle transaction
+		// 2. Apply the impact of the new transaction
 		if (newSourceId) {
 			const acc = await SELECT.one.from("patrimonio.Accounts").where({ ID: newSourceId });
 			if (acc) {
@@ -252,9 +274,12 @@ module.exports = cds.service.impl(async function () {
 	});
 
 	/**
-	 * Before UPDATE Accounts:
+	 * Before UPDATE handler for Accounts.
 	 * Automatically records balance changes into BalanceHistory and ExecutionLogs
-	 * to track wealth evolution (e.g. PEG Castor Amundi valorisation, savings growth).
+	 * to track wealth evolution (e.g. PEG Employee Savings valuation, savings growth).
+	 *
+	 * @param {cds.Request} req - The CAP request containing updated account fields.
+	 * @returns {Promise<void>}
 	 */
 	this.before("UPDATE", "Accounts", async (req) => {
 		const customMotif = req.data?.MotifAjustement;
@@ -312,12 +337,15 @@ module.exports = cds.service.impl(async function () {
 	});
 
 	// =========================================================================
-	// 2. GESTION DU CYCLE DE VIE DES COMPTES ET NŒUDS DE FLUX
+	// 2. ACCOUNTS AND FLOW NODES LIFECYCLE MANAGEMENT
 	// =========================================================================
 
 	/**
-	 * Custom on DELETE Accounts:
+	 * Custom on DELETE handler for Accounts.
 	 * Cascade deletes child rules, debits, pending txs, and detaches history.
+	 *
+	 * @param {cds.Request} req - The CAP request with account ID.
+	 * @returns {Promise<any>}
 	 */
 	this.on("DELETE", "Accounts", async (req) => {
 		const id = req.data?.ID || req.params?.[0]?.ID || req.params?.[0];
@@ -355,8 +383,11 @@ module.exports = cds.service.impl(async function () {
 	});
 
 	/**
-	 * Custom on DELETE FlowNodes:
+	 * Custom on DELETE handler for FlowNodes.
 	 * Cascade deletes all connections associated with the node and deletes the node.
+	 *
+	 * @param {cds.Request} req - The CAP request with flow node ID.
+	 * @returns {Promise<any>}
 	 */
 	this.on("DELETE", "FlowNodes", async (req) => {
 		const id = req.data?.ID || req.params?.[0]?.ID || req.params?.[0];
@@ -380,8 +411,11 @@ module.exports = cds.service.impl(async function () {
 	});
 
 	/**
-	 * Before CREATE FlowConnections:
-	 * Validates rules and prevents loops.
+	 * Before CREATE handler for FlowConnections.
+	 * Validates rule parameters and prevents self-referencing loops.
+	 *
+	 * @param {cds.Request} req - The CAP request containing flow connection details.
+	 * @returns {Promise<void>}
 	 */
 	this.before("CREATE", "FlowConnections", async (req) => {
 		const { SourceNode_ID, TargetNode_ID, TypeRegle, Valeur } = req.data;
@@ -398,16 +432,18 @@ module.exports = cds.service.impl(async function () {
 	});
 
 	// =========================================================================
-	// 3. MOTEUR DE CALCUL DU SPLIT SALARIAL & ANALYSE DE GRAPHES
+	// 3. SALARY SPLIT CALCULATION ENGINE & GRAPH ANALYSIS
 	// =========================================================================
 
 	/**
 	 * Helper function to calculate salary split allocations based on flow graph nodes or classic allocation rules.
-	 * Also performs ceiling (Plafond) verification and generates alerts.
+	 * Also performs regulatory ceiling (Plafond) verification and generates alerts.
 	 *
-	 * @param {number} salaryAmount - The net salary amount.
-	 * @param {boolean} [deductLivingBudget=false] - Whether to deduct fixed charges and living budget first.
-	 * @returns {Promise<{transactions: Object[], details: Object}>}
+	 * @async
+	 * @function getSalarySplitTransactions
+	 * @param {number|string} salaryAmount - The net salary amount to distribute.
+	 * @param {boolean} [deductLivingBudget=false] - Whether to deduct fixed charges and everyday living budget first.
+	 * @returns {Promise<{transactions: Object[], details: Object}>} The generated transactions list and audit details.
 	 */
 	async function getSalarySplitTransactions(salaryAmount, deductLivingBudget = false) {
 		const parsedSalary = parseFloat(salaryAmount);
@@ -506,7 +542,7 @@ module.exports = cds.service.impl(async function () {
 
 				let remainingAmount = currAmount;
 
-				// 1. Allocation des règles fixes
+				// 1. Fixed rules allocation
 				for (const conn of fixedConns) {
 					const val = parseFloat(conn.Valeur || 0);
 					const allocated = Math.round(Math.min(remainingAmount, val) * 100) / 100;
@@ -558,7 +594,7 @@ module.exports = cds.service.impl(async function () {
 					}
 				}
 
-				// 2. Allocation des règles au pourcentage sur le reliquat
+				// 2. Percentage rules allocation on the remainder
 				const baseForPercent = remainingAmount;
 				for (const conn of percentConns) {
 					const percent = parseFloat(conn.Valeur || 0);
@@ -614,7 +650,7 @@ module.exports = cds.service.impl(async function () {
 				}
 			}
 		} else {
-			// Mode classique : AllocationRules
+			// Classic mode: AllocationRules
 			const rules = await SELECT.from(AllocationRules);
 			for (const rule of rules) {
 				rule.Account = accountsMap.get(rule.Account_ID);
@@ -701,12 +737,15 @@ module.exports = cds.service.impl(async function () {
 	}
 
 	// =========================================================================
-	// 4. ACTIONS EXPOSÉES DANS LE SERVICE
+	// 4. SERVICE EXPOSED ACTIONS
 	// =========================================================================
 
 	/**
 	 * Action: processSalarySplit
 	 * Calculates the split and immediately creates transactions atomically.
+	 *
+	 * @param {cds.Request} req - The CAP action request.
+	 * @returns {Promise<Object>} The ExecutionLog record indicating outcome.
 	 */
 	this.on("processSalarySplit", async (req) => {
 		const { salaryAmount, deductLivingBudget } = req.data;
@@ -770,7 +809,10 @@ module.exports = cds.service.impl(async function () {
 
 	/**
 	 * Action: calculateSalarySplit
-	 * Calculates the proposed split transactions, manages the pending queue, and returns the plan.
+	 * Calculates the proposed split transactions, stages them in PendingTransactions, and returns the plan.
+	 *
+	 * @param {cds.Request} req - The CAP action request.
+	 * @returns {Promise<string>} JSON string of proposed transactions.
 	 */
 	this.on("calculateSalarySplit", async (req) => {
 		const { salaryAmount, deductLivingBudget } = req.data;
@@ -779,7 +821,7 @@ module.exports = cds.service.impl(async function () {
 
 			const result = await getSalarySplitTransactions(salaryAmount, !!deductLivingBudget);
 
-			// Trouver le compte courant récepteur
+			// Find receiving checking account
 			let checkingAccountId = null;
 			const sourceNodes = await SELECT.from(FlowNodes).where({ Type: "Source" });
 			if (sourceNodes.length > 0 && sourceNodes[0].Account_ID) {
@@ -791,7 +833,7 @@ module.exports = cds.service.impl(async function () {
 				}
 			}
 
-			// Ajouter la transaction d'arrivée du salaire en amont
+			// Add upfront incoming salary transaction
 			if (checkingAccountId) {
 				const checkingAcc = await SELECT.one.from(Accounts).where({ ID: checkingAccountId });
 				const salaryTx = {
@@ -835,6 +877,9 @@ module.exports = cds.service.impl(async function () {
 	/**
 	 * Action: saveConfirmedSalarySplit
 	 * Persists user-confirmed transactions, cleans up the pending queue, and logs execution.
+	 *
+	 * @param {cds.Request} req - The CAP action request.
+	 * @returns {Promise<Object>} The ExecutionLog record of the confirmed split.
 	 */
 	this.on("saveConfirmedSalarySplit", async (req) => {
 		const { transactionsJson, salaryAmount } = req.data;
@@ -914,6 +959,8 @@ module.exports = cds.service.impl(async function () {
 	/**
 	 * Action: recomputeAccountBalances
 	 * Recalculates all account balances from scratch based on their starting amounts and transaction records.
+	 *
+	 * @returns {Promise<string>} Summary message confirming the account reconciliation.
 	 */
 	this.on("recomputeAccountBalances", async () => {
 		const accounts = await SELECT.from(Accounts);
@@ -923,6 +970,8 @@ module.exports = cds.service.impl(async function () {
 	/**
 	 * Function: getMonthlyBudgetSummary
 	 * Computes everyday living budget consumption, remaining allowance, and category breakdown.
+	 *
+	 * @returns {Promise<string>} JSON string of monthly living budget metrics.
 	 */
 	this.on("getMonthlyBudgetSummary", async () => {
 		const salConfig = await SELECT.one.from(SalaryConfig);
@@ -1010,6 +1059,9 @@ module.exports = cds.service.impl(async function () {
 	/**
 	 * Function: getUserProfile
 	 * Returns full user identity, BTP environment details, roles, and wealth management preferences.
+	 *
+	 * @param {cds.Request} req - The CAP request object.
+	 * @returns {Promise<string>} JSON string of user profile and preferences.
 	 */
 	this.on("getUserProfile", async (req) => {
 		const user = req.user || {};
@@ -1071,6 +1123,9 @@ module.exports = cds.service.impl(async function () {
 	/**
 	 * Action: updateUserProfile
 	 * Updates the wealth management profile preferences in database.
+	 *
+	 * @param {cds.Request} req - The CAP action request containing preferencesJson.
+	 * @returns {Promise<string>} Confirmation message.
 	 */
 	this.on("updateUserProfile", async (req) => {
 		const { preferencesJson } = req.data;
@@ -1110,6 +1165,9 @@ module.exports = cds.service.impl(async function () {
 	 * Function: exportUserData
 	 * RGPD Article 20: Data Portability.
 	 * Exports all user-related data (accounts, transactions, debits, rules, config) into structured JSON.
+	 *
+	 * @param {cds.Request} req - The CAP request.
+	 * @returns {Promise<string>} Structured JSON string representing the complete data portability payload.
 	 */
 	this.on("exportUserData", async (req) => {
 		const accounts = await SELECT.from(Accounts);
@@ -1146,6 +1204,8 @@ module.exports = cds.service.impl(async function () {
 	/**
 	 * Action: clearAllData
 	 * Wipes all tables to allow starting with an empty, clean database (zero data).
+	 *
+	 * @returns {Promise<string>} Confirmation message.
 	 */
 	this.on("clearAllData", async () => {
 		await DELETE.from("patrimonio.PendingTransactions");
@@ -1167,6 +1227,9 @@ module.exports = cds.service.impl(async function () {
 	/**
 	 * Action: resetToDemoData
 	 * Resets database state to default French demo accounts and configuration.
+	 * Purges any specific company mentions to maintain vendor neutrality.
+	 *
+	 * @returns {Promise<string>} Confirmation message.
 	 */
 	this.on("resetToDemoData", async () => {
 		await DELETE.from("patrimonio.PendingTransactions");
@@ -1178,7 +1241,7 @@ module.exports = cds.service.impl(async function () {
 		await DELETE.from("patrimonio.Accounts");
 		await DELETE.from("patrimonio.SalaryConfig");
 
-		// 1. Comptes bancaires et placements réels (Total = 12 604,06 €)
+		// 1. Bank accounts and real assets (Total = €12,604.06)
 		await INSERT.into("patrimonio.Accounts").entries([
 			{
 				ID: "acc00001-0000-4000-a000-000000000001",
@@ -1242,8 +1305,8 @@ module.exports = cds.service.impl(async function () {
 			},
 			{
 				ID: "acc00005-0000-4000-a000-000000000005",
-				Libelle: "Amundi EE - PEG VINCI (Castor)",
-				Type: "PEG Castor Vinci",
+				Libelle: "Amundi EE - PEG Entreprise",
+				Type: "PEG Epargne Salariale",
 				SoldeActuel: 2666.63,
 				Devise: "EUR",
 				TypePlacement: "Verrouille",
@@ -1257,7 +1320,7 @@ module.exports = cds.service.impl(async function () {
 			},
 		]);
 
-		// 2. Configuration Salaire
+		// 2. Salary configuration
 		await INSERT.into("patrimonio.SalaryConfig").entries({
 			ID: "sal00001-0000-4000-a000-000000000001",
 			MontantBrut: 1870.0,
@@ -1267,7 +1330,7 @@ module.exports = cds.service.impl(async function () {
 			MatelasSecurite: 200.0,
 		});
 
-		// 3. Nœuds de flux
+		// 3. Flow nodes
 		await INSERT.into("patrimonio.FlowNodes").entries([
 			{
 				ID: "node0001-0000-4000-a000-000000000001",
@@ -1279,7 +1342,7 @@ module.exports = cds.service.impl(async function () {
 			},
 			{
 				ID: "node0002-0000-4000-a000-000000000002",
-				Label: "Amundi EE - PEG VINCI (Castor)",
+				Label: "Amundi EE - PEG Entreprise",
 				Type: "Target",
 				Account_ID: "acc00005-0000-4000-a000-000000000005",
 				PosX: 450,
@@ -1311,7 +1374,7 @@ module.exports = cds.service.impl(async function () {
 			},
 		]);
 
-		// 4. Liaisons de flux
+		// 4. Flow connections
 		await INSERT.into("patrimonio.FlowConnections").entries([
 			{
 				ID: "conn0001-0000-4000-a000-000000000001",
@@ -1336,7 +1399,7 @@ module.exports = cds.service.impl(async function () {
 			},
 		]);
 
-		// 5. Règles d'allocation classiques
+		// 5. Classic allocation rules
 		await INSERT.into("patrimonio.AllocationRules").entries([
 			{
 				ID: "rule0001-0000-4000-a000-000000000001",
@@ -1358,11 +1421,11 @@ module.exports = cds.service.impl(async function () {
 			},
 		]);
 
-		// 6. Abonnements récurrents (Total charges = 496,40 €)
+		// 6. Recurring debits (Total charges = €496.40)
 		await INSERT.into("patrimonio.RecurringDebits").entries([
 			{
 				ID: "rec00001-0000-4000-a000-000000000001",
-				Libelle: "Épargne Salariale Castor Vinci (Amundi)",
+				Libelle: "Épargne Salariale PEG (Amundi)",
 				Montant: 250.0,
 				JourDuMois: 28,
 				Account_ID: "acc00001-0000-4000-a000-000000000001",
@@ -1392,12 +1455,12 @@ module.exports = cds.service.impl(async function () {
 			},
 		]);
 
-		// 7. Transactions réelles enregistrées depuis la paie du 28/08/2026
+		// 7. Recorded transactions since payday 2026-08-28
 		await INSERT.into("patrimonio.Transactions").entries([
 			{
 				ID: "tx000001-0000-4000-a000-000000000001",
 				Date: "2026-08-28T10:00:00Z",
-				Libelle: "VIR RECU DE: VINCI CONSTRUCTION SI",
+				Libelle: "VIR RECU DE: EMPLOYEUR - SALAIRE",
 				Montant: 1458.25,
 				Type: "Entree",
 				AccountSource_ID: null,
@@ -1462,7 +1525,7 @@ module.exports = cds.service.impl(async function () {
 			},
 		]);
 
-		// 8. Historique d'évolution des soldes (PEG Castor Vinci)
+		// 8. Balance history tracking (PEG Employee Savings)
 		await DELETE.from("patrimonio.BalanceHistory");
 		await INSERT.into("patrimonio.BalanceHistory").entries([
 			{
@@ -1472,7 +1535,7 @@ module.exports = cds.service.impl(async function () {
 				AncienSolde: 2416.63,
 				NouveauSolde: 2666.63,
 				Delta: 250.0,
-				Motif: "Versement mensuel plan Castor Vinci (+250,00 €)",
+				Motif: "Versement mensuel plan PEG (+250,00 €)",
 			},
 			{
 				ID: "hist0002-0000-4000-a000-000000000002",
@@ -1481,7 +1544,7 @@ module.exports = cds.service.impl(async function () {
 				AncienSolde: 2666.63,
 				NouveauSolde: 3130.83,
 				Delta: 464.2,
-				Motif: "Actualisation de la valorisation de parts PEG VINCI (+464,20 € / +17,41%)",
+				Motif: "Actualisation de la valorisation de parts PEG (+464,20 € / +17,41%)",
 			},
 		]);
 

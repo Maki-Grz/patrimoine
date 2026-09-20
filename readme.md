@@ -4,23 +4,23 @@
 
 ---
 
-[![Release: v1.0.0](https://img.shields.io/badge/release-v1.0.0-blue.svg?style=flat-flat&logo=github)](https://github.com/Maki-Grz/patrimoine/releases)
+[![Release: v1.0.1](https://img.shields.io/badge/release-v1.0.1-blue.svg?style=flat-flat&logo=github)](https://github.com/Maki-Grz/patrimoine/releases)
 [![Project Status: Production / Stable](https://img.shields.io/badge/status-stable-success.svg?style=flat-flat)](https://github.com/Maki-Grz/patrimoine)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Built with SAP CAP](https://img.shields.io/badge/SAP-CAP%20Node.js-blue?logo=sap)](https://cap.cloud.sap)
 [![Svelte](https://img.shields.io/badge/Frontend-Svelte_5-ff3e00?logo=svelte)](https://svelte.dev)
 
 > [!NOTE]
-> **OFFICIAL PRODUCTION RELEASE (v1.0.0 - General Availability)**
-> Patrimoine has officially graduated from beta into **v1.0.0 (General Availability)**. The platform is production-ready for personal wealth management, financial DAG flow allocations, living budget optimization, previsional cash calendar, French sovereign asset tracking, and full enterprise SAP BTP Cloud deployment. Consult the [CHANGELOG.md](CHANGELOG.md) for detailed release notes.
+> **OFFICIAL PRODUCTION RELEASE (v1.0.1)**
+> Patrimoine is an enterprise-grade platform for personal wealth management, financial DAG flow allocations, living budget optimization, previsional cash calendars, European sovereign asset tracking, and full enterprise SAP BTP Cloud deployment. Consult the [CHANGELOG.md](CHANGELOG.md) for detailed release history.
 
 ---
 
 ## Overview
 
-**Patrimoine** is an open-source, self-hostable, and sovereign personal wealth management platform. Built natively on the **SAP Cloud Application Programming Model (CAP)** and powered by **Svelte 5** and **SAP UI5 Web Components**, it provides an elegant, security-first dashboard to map, automate, and simulate your personal asset allocations.
+**Patrimoine** is an open-source, self-hostable, and sovereign personal wealth management platform. Built natively on the **SAP Cloud Application Programming Model (CAP)** and powered by **Svelte 5** and **SAP UI5 Web Components**, it provides an elegant, security-first dashboard to map, automate, and simulate personal asset allocations.
 
-Designed specifically for European citizens under French financial schemas, the application allows users to orchestrate incoming revenue splits into various bank accounts, savings books (*Livret A*, *LDDS*), company stock plans (*PEG/PER*), and investments (*PEA*, *Assurance Vie*).
+Designed for European citizens and adaptable to specialized savings schemes, the application allows users to orchestrate incoming revenue splits into various bank accounts, savings books (*Livret A*, *LDDS*), employee shareholding plans (*PEG/PER*), and investments (*PEA*, *Assurance Vie*).
 
 ---
 
@@ -29,41 +29,37 @@ Designed specifically for European citizens under French financial schemas, the 
 - **Backend**: SAP CAP (Node.js) with `@sap/cds` for OData v4 service exposure.
 - **Frontend**: Svelte 5 (Vite) + UI5 Web Components & Fiori Design System for standard-compliant enterprise UX.
 - **Database**: SQLite (Local development/testing), fully compatible with SAP HANA for production deployments.
-- **Routing & Authentication**: SAP BTP Approuter (`@sap/approuter`) for secure routing.
+- **Routing & Authentication**: SAP BTP Approuter (`@sap/approuter`) for secure routing and XSUAA authentication.
 
 ---
 
 ## European Context & Digital Sovereignty
 
-In the age of hyper-centralized cloud giants and intrusive fintech aggregators, **Patrimoine** takes a stand for **European Digital Sovereignty** and privacy:
+In the age of hyper-centralized cloud giants and intrusive fintech aggregators, **Patrimoine** takes a firm stand for **European Digital Sovereignty** and privacy:
 
-1. **GDPR by Design (RGPD)**: Zero tracking pixels, zero analytics scripts, zero third-party cookie consents. Your financial assets are highly sensitive; the software runs purely on your infrastructure.
-2. **Local-First / Sovereign Cloud**: The application runs perfectly offline on local SQLite. When deployed to the cloud, it is optimized for European sovereign cloud stacks (e.g., European SAP BTP regions, sovereign Kubernetes clusters) rather than US-centric SaaS platforms.
-3. **No Vendor Lock-In**: Built using standard OData v4, Svelte, and standardized CDS schemas, ensuring that your data models and application remain open and portable.
+1. **GDPR by Design (RGPD)**: Zero tracking pixels, zero analytics scripts, zero third-party cookie consents. Your financial assets are highly sensitive; the software runs purely on your own infrastructure.
+2. **Local-First / Sovereign Cloud**: The application runs completely offline on local SQLite. When deployed to the cloud, it is optimized for European sovereign cloud stacks (e.g., European SAP BTP regions, sovereign Kubernetes clusters) rather than US-centric SaaS platforms.
+3. **No Vendor Lock-In**: Built using standard OData v4, Svelte, and standardized CDS schemas, ensuring that data models and application logic remain open and portable.
 
 ---
 
-## French Interface & Financial Extracts (Ciblé Francophone)
+## Account Architecture & Allocation Engine
 
-While the developer-facing documentation and codebase architecture are in English to foster global open-source contributions, the application is tailored for the French financial ecosystem. 
+### 1. Supported Account Typology
+The database uses standard terminology for regulated and open financial accounts (`db/schema.cds`):
+- `Courant` (Primary Checking account)
+- `Livret A` (State-regulated savings account with tax exemption)
+- `LDDS` (Sustainable development savings account)
+- `PEG Epargne Salariale` / `Amundi` (Employee savings plans with company matching / *abondement*)
+- `PEA` (Stock savings plan / Equity envelope)
+- `Assurance Vie` (Life insurance and unit-linked funds)
 
-Below are typical data structures and UI texts preserved in French within the system:
-
-### 1. Types de Comptes Supportés (Account Types)
-The database uses native terminology for French accounts (`db/schema.cds`):
-- `Courant` (Current account)
-- `Livret A` (State-regulated savings account)
-- `LDDS` (Livret de Développement Durable et Solidaire)
-- `PEG Castor Vinci` / `Amundi` (Employee savings plans with company matching / *abondement*)
-- `PEA` (Plan d'Epargne en Actions)
-
-### 2. Algorithme de Répartition (Salary Split Messages)
-The backend service implementation (`srv/patrimoine-service.js`) logs and validates operations using French feedback strings for the user interface:
-- **Validation**: `"Le montant du salaire saisi est invalide."`
-- **Missing configuration error**: `"Aucune règle de répartition configurée et aucun graphe de flux trouvé."`
-- **Split overshoot protection**: `"Le total des règles fixes (XXXX EUR) dépasse le montant du salaire (YYYY EUR)."`
-- **Execution log confirmation**: `"Répartition automatique du salaire de XXXX EUR effectuée avec succès sur YY comptes."`
-- **Manual confirmation validation**: `"Répartition manuelle du salaire : X virement(s) enregistré(s) avec succès. Y virement(s) restant(s) en attente."`
+### 2. Salary Allocation Algorithm (DAG Flow Engine)
+The backend service (`srv/patrimoine-service.js`) provides an intelligent split engine with robust feedback:
+- **Validation**: Strict verification of positive transaction amounts and non-looping graph connections.
+- **Overdraft Protection**: Automatic check ensuring fixed allocation rules do not exceed net incoming salary.
+- **Ceiling Alerts**: Real-time warnings when projected contributions approach or exceed regulatory account limits (e.g. Livret A €22,950 limit).
+- **Audit Logs**: Traceability of automated and manual salary splits in `ExecutionLogs`.
 
 ---
 
@@ -106,120 +102,120 @@ The backend service implementation (`srv/patrimoine-service.js`) logs and valida
 
 ---
 
-## Déploiement sur SAP BTP (Business Technology Platform)
+## Deployment to SAP BTP (Business Technology Platform)
 
-**Patrimoine** est conçu nativement pour être déployé en tant que Multi-Target Application (MTA) sur **SAP Business Technology Platform (BTP)** dans l'environnement Cloud Foundry.
+**Patrimoine** is natively designed to be deployed as a Multi-Target Application (MTA) onto **SAP Business Technology Platform (BTP)** within the Cloud Foundry environment.
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │                    Patrimoine on SAP BTP                    │
 │                                                             │
-│  [ Utilisateur / Navigateur ]                               │
-│                │                                            │
-│                ▼                                            │
-│     ┌─────────────────────┐       ┌──────────────────────┐  │
-│     │     Approuter       │──────▶│ HTML5 App Repository │  │
-│     │ patrimoine-approuter│       │ (Frontend Svelte 5)  │  │
-│     └──────────┬──────────┘       └──────────────────────┘  │
-│                │                                            │
-│        ┌───────┴───────┐                                    │
-│        ▼               ▼                                    │
-│  ┌──────────┐   ┌──────────────┐                            │
-│  │  XSUAA   │   │  CAP Service │ (OData v4 / NodeJS)        │
-│  │ (Auth)   │   │patrimoine-srv│                            │
-│  └──────────┘   └──────┬───────┘                            │
-│                        │                                    │
-│                        ▼                                    │
-│                 ┌──────────────┐                            │
-│                 │  HANA Cloud  │ (HDI Shared Container)     │
-│                 │patrimoine-db │                            │
-│                 └──────────────┘                            │
+│  [ User / Browser ]                                         │
+│          │                                                  │
+│          ▼                                                  │
+│   ┌─────────────────────┐       ┌──────────────────────┐    │
+│   │     Approuter       │──────▶│ HTML5 App Repository │    │
+│   │ patrimoine-approuter│       │ (Frontend Svelte 5)  │    │
+│   └──────────┬──────────┘       └──────────────────────┘    │
+│              │                                              │
+│      ┌───────┴───────┐                                      │
+│      ▼               ▼                                      │
+│┌──────────┐   ┌──────────────┐                              │
+││  XSUAA   │   │  CAP Service │ (OData v4 / NodeJS)          │
+││ (Auth)   │   │patrimoine-srv│                              │
+│└──────────┘   └──────┬───────┘                              │
+│                      │                                      │
+│                      ▼                                      │
+│               ┌──────────────┐                              │
+│               │  HANA Cloud  │ (HDI Shared Container)       │
+│               │patrimoine-db │                              │
+│               └──────────────┘                              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 1. Prérequis & Outillage
+### 1. Prerequisites & CLI Tooling
 
-Assurez-vous de disposer des prérequis et outils CLI suivants :
+Ensure you have installed the following required CLI tools:
 
-1. **Cloud Foundry CLI (`cf`)** (v8 ou supérieure) :
+1. **Cloud Foundry CLI (`cf`)** (v8 or higher):
    ```bash
    cf version
    ```
-2. **Plugin Cloud Foundry MTA (`multiapps`)** :
+2. **Cloud Foundry MTA Plugin (`multiapps`)**:
    ```bash
    cf install-plugin multiapps
    ```
-3. **Cloud MTA Build Tool (`mbt`)** :
+3. **Cloud MTA Build Tool (`mbt`)**:
    ```bash
    npm install -g mbt
    ```
-4. **SAP CDS Development Kit (`@sap/cds-dk`)** :
+4. **SAP CDS Development Kit (`@sap/cds-dk`)**:
    ```bash
    npm install -g @sap/cds-dk
    ```
-5. **Sous-compte SAP BTP actif** :
-   - Environnement **Cloud Foundry** activé avec une organisation et un espace (*space*, ex: `production` ou `dev`).
-   - Quotas et droits (*entitlements*) alloués au sous-compte :
-     - **SAP HANA Cloud** : service `hana`, plan `hdi-shared`.
-     - **Authorization & Trust Management** : service `xsuaa`, plan `application`.
-     - **SAP HTML5 Application Repository** : service `html5-apps-repo`, plans `app-host` et `app-runtime`.
+5. **Active SAP BTP Subaccount**:
+   - **Cloud Foundry** environment enabled with an organization and space (e.g., `production` or `dev`).
+   - Service entitlements configured in subaccount:
+     - **SAP HANA Cloud**: service `hana`, plan `hdi-shared`.
+     - **Authorization & Trust Management**: service `xsuaa`, plan `application`.
+     - **SAP HTML5 Application Repository**: service `html5-apps-repo`, plans `app-host` and `app-runtime`.
 
 ---
 
-### 2. Étape 1 : Construction de l'application & de l'archive MTA (`.mtar`)
+### 2. Step 1: Build Application & MTA Archive (`.mtar`)
 
-Depuis la racine du projet, compilez le frontend Svelte 5 ainsi que les artefacts backend, puis générez l'archive de déploiement MTA :
+From the root project folder, compile the Svelte 5 frontend and backend models, then generate the MTA deployment archive:
 
 ```bash
-# 1. Compilation du frontend Svelte 5
+# 1. Compile Svelte 5 frontend
 npm run build:frontend
 
-# 2. Compilation des modèles CDS pour Node.js / SAP HANA
+# 2. Compile CDS models for Node.js / SAP HANA
 npm run build:backend
 
-# 3. Génération du package MTA (.mtar)
+# 3. Generate MTA deployment archive (.mtar)
 mbt build
 ```
 
 > [!TIP]
-> L'archive prête pour le déploiement est générée sous `mta_archives/patrimoine_1.0.0.mtar`.
+> The generated archive will be located at `mta_archives/patrimoine_1.0.1.mtar`.
 
 ---
 
-### 3. Étape 2 : Connexion à l'environnement SAP BTP Cloud Foundry
+### 3. Step 2: Connect to SAP BTP Cloud Foundry Environment
 
-Authentifiez-vous auprès de votre région SAP BTP et ciblez votre espace :
+Authenticate to your SAP BTP region API endpoint and target your space:
 
 ```bash
-# Se connecter à l'endpoint API Cloud Foundry de votre région (ex: Francfort cf-eu10)
+# Log in to Cloud Foundry API endpoint (e.g., Frankfurt cf-eu10)
 cf login -a https://api.cf.eu10-004.hana.ondemand.com
 
-# Définir l'organisation et l'espace cible
-cf target -o <votre-organisation> -s <votre-espace>
+# Target your organization and space
+cf target -o <your-organization> -s <your-space>
 ```
 
 ---
 
-### 4. Étape 3 : Déploiement de l'archive MTA
+### 4. Step 3: Deploy MTA Archive
 
-Lancez le déploiement de l'application complète :
+Deploy the full application package to Cloud Foundry:
 
 ```bash
-cf deploy mta_archives/patrimoine_1.0.0.mtar
+cf deploy mta_archives/patrimoine_1.0.1.mtar
 ```
 
-Cette opération orchestrée par le service MTA Cloud Foundry exécute automatiquement :
-1. **Création / Mise à jour des services managés** (`patrimoine-db`, `patrimoine-uaa`, `patrimoine-html5-host`, `patrimoine-html5-runtime`).
-2. **Déploiement du schéma de base de données** (`patrimoine-db-deployer`) : instancie les tables, vues CDS et conteneur HDI sur SAP HANA Cloud.
-3. **Publication du Frontend** (`patrimoine-html5-deployer`) : téléverse le bundle Svelte 5 compilé dans le HTML5 Application Repository.
-4. **Démarrage du service backend** (`patrimoine-srv`) : démarre l'application Node.js fournissant les API OData v4 sécurisées.
-5. **Démarrage de l'Approuter** (`patrimoine-approuter`) : route unifiée publique avec authentification XSUAA.
+This Cloud Foundry MTA deployment orchestrates:
+1. **Creation/Update of Managed Services** (`patrimoine-db`, `patrimoine-uaa`, `patrimoine-html5-host`, `patrimoine-html5-runtime`).
+2. **Database Schema Deployment** (`patrimoine-db-deployer`): Instantiates CDS entities, views, and HDI container on SAP HANA Cloud.
+3. **Frontend Publication** (`patrimoine-html5-deployer`): Uploads the compiled Svelte 5 bundle into the HTML5 Application Repository.
+4. **Backend Service Launch** (`patrimoine-srv`): Starts the Node.js application exposing secure OData v4 endpoints.
+5. **Approuter Gateway Launch** (`patrimoine-approuter`): Unified secure entrypoint with XSUAA OAuth2 protection.
 
 ---
 
-### 5. Étape 4 : Déploiement manuel direct sur SAP HANA (Optionnel)
+### 5. Step 4: Direct Deployment to SAP HANA (Development Mode)
 
-Si vous développez et souhaitez déployer directement vos entités CDS sur une instance SAP HANA Cloud liée sans reconstruire l'archive MTA :
+If you are developing and wish to deploy CDS models directly to a bound SAP HANA Cloud instance without building the full MTA archive:
 
 ```bash
 cds deploy --to hana
@@ -227,23 +223,23 @@ cds deploy --to hana
 
 ---
 
-### 6. Étape 5 : Attribution des Rôles & Accès à l'Application
+### 6. Step 5: Role Assignment & Application Access
 
-1. Accédez au **Cockpit SAP BTP** de votre sous-compte.
-2. Naviguez dans **Security** > **Users** (ou **Role Collections**).
-3. Attribuez la collection de rôles de l'application Patrimoine à votre utilisateur.
-4. Récupérez l'URL publique de l'Approuter avec la commande :
+1. Log into your **SAP BTP Cockpit**.
+2. Navigate to **Security** > **Users** (or **Role Collections**).
+3. Assign the `PatrimoineUser` (or `PatrimoineAdmin`) role collection to your user account.
+4. Retrieve the public URL of the deployed Approuter:
    ```bash
    cf apps
    ```
-5. Ouvrez l'URL de `patrimoine-approuter` dans votre navigateur.
-6. Le point de terminaison de contrôle d'état et disponibilité est disponible sur `/health`.
+5. Open the `patrimoine-approuter` URL in your browser.
+6. Health and availability probes are accessible via `/health`.
 
 ---
 
-## Patch Notes & Historique
+## Release Notes & History
 
-Consultez le fichier [CHANGELOG.md](CHANGELOG.md) pour retrouver le journal complet des modifications, ajouts et notes de version depuis l'initialisation du projet.
+Consult the [CHANGELOG.md](CHANGELOG.md) file for complete details on all releases, bug fixes, and feature additions.
 
 ---
 
